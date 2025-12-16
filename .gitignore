@@ -1,1 +1,3 @@
 LLD.md
+node_modules/
+cdk.out/

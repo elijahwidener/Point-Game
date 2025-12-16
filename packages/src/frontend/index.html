@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Point Game!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 4rem;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .counter-display {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem 3rem;
+            margin-bottom: 2rem;
+        }
+
+        .counter-label {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.9;
+        }
+
+        .counter-value {
+            font-size: 5rem;
+            font-weight: bold;
+        }
+
+        .increment-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 1rem 3rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .increment-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .increment-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .increment-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background: #4ade80;
+        }
+
+        .status-disconnected {
+            background: #f87171;
+        }
+
+        .status-connecting {
+            background: #fbbf24;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Point Game!</h1>
+
+        <div class="counter-display">
+            <div class="counter-label">Counter Value</div>
+            <div class="counter-value" id="counter">--</div>
+        </div>
+
+        <button class="increment-btn" id="incrementBtn" onclick="incrementCounter()">
+            + Increment
+        </button>
+
+        <div class="status">
+            <span class="status-indicator status-connecting" id="statusIndicator"></span>
+            <span id="statusText">Connecting...</span>
+        </div>
+    </div>
+
+    <script>
+        const WEBSOCKET_URL = '{{WEBSOCKET_ENDPOINT}}';
+        let ws = null;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 5;
+
+        function updateStatus(status, text) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+
+            indicator.className = 'status-indicator status-' + status;
+            statusText.textContent = text;
+        }
+
+        function updateCounter(value) {
+            document.getElementById('counter').textContent = value;
+        }
+
+        function connect() {
+            updateStatus('connecting', 'Connecting...');
+
+            try {
+                ws = new WebSocket(WEBSOCKET_URL);
+
+                ws.onopen = function() {
+                    console.log('WebSocket connected');
+                    updateStatus('connected', 'Connected');
+                    reconnectAttempts = 0;
+                    document.getElementById('incrementBtn').disabled = false;
+
+                    // Request current counter value
+                    ws.send(JSON.stringify({ action: 'getCounter' }));
+                };
+
+                ws.onmessage = function(event) {
+                    console.log('Received:', event.data);
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.counter !== undefined) {
+                            updateCounter(data.counter);
+                        }
+                        if (data.error) {
+                            console.error('Server error:', data.error);
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse message:', e);
+                    }
+                };
+
+                ws.onclose = function() {
+                    console.log('WebSocket disconnected');
+                    updateStatus('disconnected', 'Disconnected');
+                    document.getElementById('incrementBtn').disabled = true;
+
+                    // Attempt reconnect
+                    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                        reconnectAttempts++;
+                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+                        console.log('Reconnecting in ' + delay + 'ms...');
+                        setTimeout(connect, delay);
+                    }
+                };
+
+                ws.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                    updateStatus('disconnected', 'Connection Error');
+                };
+            } catch (e) {
+                console.error('Failed to create WebSocket:', e);
+                updateStatus('disconnected', 'Failed to connect');
+            }
+        }
+
+        function incrementCounter() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ action: 'increment' }));
+            }
+        }
+
+        // Initialize connection
+        connect();
+    </script>
+</body>
+</html>
