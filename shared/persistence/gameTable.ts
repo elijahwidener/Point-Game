@@ -72,7 +72,7 @@ export async function updateTableConfig(
       '#config': 'config',
     },
     ExpressionAttributeValues: {
-      ':config': marshall(config),
+      ':config': {M: marshall(config)},
     },
   }));
 }

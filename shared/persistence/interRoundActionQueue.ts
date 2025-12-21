@@ -5,6 +5,7 @@ import {ddb} from './dynamo/client';
 import {TABLES} from './dynamo/tables';
 import {InterRoundAction, InterRoundActionType} from './types';
 
+// loads all actions in queue
 export async function loadInterRoundActions(tableID: string):
     Promise<InterRoundAction[]> {
   const result = await ddb.send(new QueryCommand({
@@ -43,6 +44,7 @@ export async function enqueueInterRoundAction(
   return actionSeq;
 }
 
+// returns and removes the next action in queue
 export async function popInterRoundAction(tableID: string):
     Promise<InterRoundAction|undefined> {
   const res = await ddb.send(new QueryCommand({

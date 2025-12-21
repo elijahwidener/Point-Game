@@ -26,13 +26,13 @@ export async function updateGameState(
     ...mutatedState,
     tableID,
     gameSeq: expectedGameSeq + 1,
-    ...GetItemCommand(timerSeq !== undefined ? {timerSeq} : {}),
+    ...(timerSeq !== undefined ? {timerSeq} : {}),
   };
 
   await ddb.send(new PutItemCommand({
     TableName: TABLES.GAME_STATE,
     Item: marshall(nextState),
-    ConditionalExpression: 'gameSeq = :expectedSeq',
+    ConditionExpression: 'gameSeq = :expectedSeq',
     ExpressionAttributeValues: {
       ':expectedSeq': {N: expectedGameSeq.toString()},
     },

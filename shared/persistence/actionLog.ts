@@ -24,6 +24,6 @@ export async function writeAction(entry: ActionLog): Promise<void> {
   await ddb.send(new PutItemCommand({
     TableName: TABLES.ACTION_LOG,
     Item: marshall(entry),
-    ConditionalExpression: 'attribute_not_exists(actionSeq)',
+    ConditionExpression: 'attribute_not_exists(actionSeq)',
   }));
 }

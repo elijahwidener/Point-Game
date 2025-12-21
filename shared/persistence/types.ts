@@ -70,3 +70,10 @@ export interface InterRoundAction {
   type: InterRoundActionType;
   payload: any[];  // number for buy ins, config for update
 }
+
+export interface User {
+  userID: string;
+  username: string;
+  password: string;
+  balance: number;
+}
