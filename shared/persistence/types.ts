@@ -47,3 +47,7 @@ export interface TableConfig {
   smallBlind: number;
   bigBlind: number;
 }
+
+export interface Timer {
+  tableID: string, timerSeq: number, playerID: string, deadline: number,
+}
