@@ -1,9 +1,9 @@
-import {GetItemCommand} from '@aws-sdk/client-dynamodb';
-import {unmarshall} from '@aws-sdk/util-dynamodb';
+import {GetItemCommand, PutItemCommand} from '@aws-sdk/client-dynamodb';
+import {marshall, unmarshall} from '@aws-sdk/util-dynamodb';
 
 import {ddb} from './dynamo/client';
 import {TABLES} from './dynamo/tables';
-import {HandSnapshot} from './types';
+import {GameState, HandSnapshot} from './types';
 
 
 export async function loadHandSnapshot(
@@ -17,4 +17,16 @@ export async function loadHandSnapshot(
   }));
 
   return result.Item ? (unmarshall(result.Item) as HandSnapshot) : null;
+}
+
+export async function writeHandSnapshot(
+    tableID: string, handSeq: number, gameState: GameState): Promise<void> {
+  const item: HandSnapshot = {tableID, handSeq, gameState};
+
+  await ddb.send(new PutItemCommand({
+    TableName: TABLES.HAND_SNAPSHOTS,
+    Item: marshall(item),
+    ConditionExpression:
+        'attribute_not_exists(tableID) AND attribute_not_exists(handSeq)'
+  }));
 }
