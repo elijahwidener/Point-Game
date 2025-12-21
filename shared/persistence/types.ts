@@ -33,6 +33,7 @@ export interface GameTable {
   ownerID: string;
   status: GameTableStatus;
   config: TableConfig;
+  interRoundActionSeq: number;
   createdAt: number;
 }
 
@@ -50,4 +51,22 @@ export interface TableConfig {
 
 export interface Timer {
   tableID: string, timerSeq: number, playerID: string, deadline: number,
+}
+
+export interface HandSnapshot {
+  tableID: string;
+  handSeq: number;
+  gameState: GameState;  // consider changing this because storing tons of game
+                         // states can be expensive
+}
+
+export type InterRoundActionType =
+    'Join'|'Leave'|'Sit Up'|'Sit Down'|'Config Update'|'End';
+
+export interface InterRoundAction {
+  tableID: string;
+  actionSeq: number;
+  userID: string;
+  type: InterRoundActionType;
+  payload: any[];  // number for buy ins, config for update
 }
