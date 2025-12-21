@@ -77,6 +77,23 @@ export async function updateTableConfig(
   }));
 }
 
+export async function updateCurrentInterroundActionSeq(
+    tableID: string, expectedSeq: number, nextSeq: number): Promise<void> {
+  await ddb.send(new UpdateItemCommand({
+    TableName: TABLES.GAME_TABLES,
+    Key: {
+      tableID: {S: tableID},
+    },
+    UpdateExpression: 'SET currentInterroundActionSeq = :next',
+    ConditionExpression: 'currentInterroundActionSeq = :expected',
+    ExpressionAttributeValues: {
+      ':expected': {N: expectedSeq.toString()},
+      ':next': {N: nextSeq.toString()},
+    },
+  }));
+}
+
+
 export async function createTable(
     tableID: string, ownerID: string, config: TableConfig): Promise<string> {
   const table: GameTable = {
@@ -84,6 +101,7 @@ export async function createTable(
     ownerID,
     status: 'Waiting',
     config,
+    interRoundActionSeq: 0,
     createdAt: Date.now(),
   };
 
