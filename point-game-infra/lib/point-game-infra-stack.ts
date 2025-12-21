@@ -8,13 +8,22 @@ export class PointGameInfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    new dynamodb.Table(this, 'Users', {
+    const usersTable = new dynamodb.Table(this, 'Users', {
       tableName: 'Users',
       partitionKey: {
         name: 'userID',
         type: dynamodb.AttributeType.STRING,
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    });
+
+    usersTable.addGlobalSecondaryIndex({
+      indexName: 'UsernameIndex',
+      partitionKey: {
+        name: 'username',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     new dynamodb.Table(this, 'GameTables', {
