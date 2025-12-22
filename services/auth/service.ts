@@ -9,13 +9,18 @@ export async function signup(
     throw new Error('Invalid input');
   }
 
+  const existing = await getAuthByUsername(username);
+  if (existing) {
+    throw new Error('Username already exists');
+  }
+
   const userID = randomUUID();
 
   const hash = createHash('sha256');
   hash.update(password);
-  password = hash.digest('hex');
-
-  return await createUser(userID, username, password, 1000);
+  const hashedPassword = hash.digest('hex');
+  await createUser(userID, username, hashedPassword, 1000);
+  return userID;
 }
 
 export async function login(

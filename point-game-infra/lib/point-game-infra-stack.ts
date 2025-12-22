@@ -1,6 +1,9 @@
 import * as cdk from 'aws-cdk-lib';
+import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
+
 
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
@@ -120,6 +123,13 @@ export class PointGameInfraStack extends cdk.Stack {
         type: dynamodb.AttributeType.NUMBER,
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    });
+
+    const authLambda = new lambda.Function(this, 'AuthLambda', {
+      functionName: 'AuthLambda',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'services/auth/index.handler',
+      code: lambda.Code.fromAsset('../services/auth/dist'),
     });
   }
 }
