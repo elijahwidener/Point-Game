@@ -11,31 +11,3 @@ export const TABLES = {
   TIMERS: 'Timers',
   USERS: 'Users',
 };
-
-export const ACTION_LOG = {
-
-};
-
-export const CONNECTION_STORE = {
-
-};
-
-export const GAME_TABLES = {
-
-};
-
-export const HAND_SNAPSHOTS = {
-
-};
-
-export const INTER_ROUND_ACTION_QUEUE = {
-
-};
-
-export const TIMERS = {
-
-};
-
-export const USERS = {
-
-};

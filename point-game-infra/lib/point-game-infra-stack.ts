@@ -1,6 +1,9 @@
 import * as cdk from 'aws-cdk-lib';
+import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
+
 
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
@@ -8,13 +11,22 @@ export class PointGameInfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    new dynamodb.Table(this, 'Users', {
+    const usersTable = new dynamodb.Table(this, 'Users', {
       tableName: 'Users',
       partitionKey: {
         name: 'userID',
         type: dynamodb.AttributeType.STRING,
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    });
+
+    usersTable.addGlobalSecondaryIndex({
+      indexName: 'UsernameIndex',
+      partitionKey: {
+        name: 'username',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
     new dynamodb.Table(this, 'GameTables', {
@@ -111,6 +123,13 @@ export class PointGameInfraStack extends cdk.Stack {
         type: dynamodb.AttributeType.NUMBER,
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    });
+
+    const authLambda = new lambda.Function(this, 'AuthLambda', {
+      functionName: 'AuthLambda',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'services/auth/index.handler',
+      code: lambda.Code.fromAsset('../services/auth/dist'),
     });
   }
 }

@@ -74,6 +74,6 @@ export interface InterRoundAction {
 export interface User {
   userID: string;
   username: string;
-  password: string;
+  passwordHash: string;
   balance: number;
 }
