@@ -1,4 +1,4 @@
-import {GetItemCommand, PutItemCommand, QueryCommand} from '@aws-sdk/client-dynamodb';
+import {GetItemCommand, PutItemCommand, QueryCommand, UpdateItemCommand} from '@aws-sdk/client-dynamodb';
 import {marshall, unmarshall} from '@aws-sdk/util-dynamodb';
 
 import {ddb} from './dynamo/client';
@@ -6,7 +6,8 @@ import {TABLES} from './dynamo/tables';
 import {User} from './types';
 
 
-export async function loadUser(userId: string): Promise<User|null> {
+export async function loadUser(userId: string):
+    Promise<{userID: string; username: string; balance: number}|null> {
   const result = await ddb.send(new GetItemCommand({
     TableName: TABLES.USERS,
     Key: {
@@ -14,7 +15,15 @@ export async function loadUser(userId: string): Promise<User|null> {
     },
   }));
 
-  return result.Item ? (unmarshall(result.Item) as User) : null;
+  if (!result.Item) return null;
+
+  const user = unmarshall(result.Item) as User;
+
+  return {
+    userID: user.userID,
+    username: user.username,
+    balance: user.balance,
+  };
 }
 
 export async function getAuthByUsername(username: string):
@@ -57,4 +66,30 @@ export async function createUser(
 
   }));
   return userID;
+}
+
+export async function applyBalanceUpdate(
+    userID: string, delta: number): Promise<number> {
+  const result = await ddb.send(new UpdateItemCommand({
+    TableName: TABLES.USERS,
+    Key: {
+      userID: {S: userID},
+    },
+    UpdateExpression: 'ADD balance :delta',
+    ConditionExpression: 'attribute_exists(userID) AND balance >= :min',
+    ExpressionAttributeValues: {
+      ':delta': {N: delta.toString()},
+      ':min': {N: '0'},
+
+    },
+    ReturnValues: 'UPDATED_NEW',
+  }));
+
+  const newBalance = result.Attributes?.balance?.N;
+
+  if (newBalance === undefined) {
+    throw new Error('Balance update failed');
+  }
+
+  return Number(newBalance);
 }

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.loadUser = loadUser;
 exports.getAuthByUsername = getAuthByUsername;
 exports.createUser = createUser;
+exports.applyBalanceUpdate = applyBalanceUpdate;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -14,7 +15,14 @@ async function loadUser(userId) {
             userId: { S: userId },
         },
     }));
-    return result.Item ? (0, util_dynamodb_1.unmarshall)(result.Item) : null;
+    if (!result.Item)
+        return null;
+    const user = (0, util_dynamodb_1.unmarshall)(result.Item);
+    return {
+        userID: user.userID,
+        username: user.username,
+        balance: user.balance,
+    };
 }
 async function getAuthByUsername(username) {
     const result = await client_1.ddb.send(new client_dynamodb_1.QueryCommand({
@@ -48,4 +56,24 @@ async function createUser(userID, username, passwordHash, balance) {
         ConditionExpression: 'attribute_not_exists(userID)',
     }));
     return userID;
+}
+async function applyBalanceUpdate(userID, delta) {
+    const result = await client_1.ddb.send(new client_dynamodb_1.UpdateItemCommand({
+        TableName: tables_1.TABLES.USERS,
+        Key: {
+            userID: { S: userID },
+        },
+        UpdateExpression: 'ADD balance :delta',
+        ConditionExpression: 'attribute_exists(userID) AND balance >= :min',
+        ExpressionAttributeValues: {
+            ':delta': { N: delta.toString() },
+            ':min': { N: '0' },
+        },
+        ReturnValues: 'UPDATED_NEW',
+    }));
+    const newBalance = result.Attributes?.balance?.N;
+    if (newBalance === undefined) {
+        throw new Error('Balance update failed');
+    }
+    return Number(newBalance);
 }
