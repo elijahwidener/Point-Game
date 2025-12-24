@@ -4,7 +4,6 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
 
-
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class PointGameInfraStack extends cdk.Stack {
@@ -131,5 +130,18 @@ export class PointGameInfraStack extends cdk.Stack {
       handler: 'services/auth/index.handler',
       code: lambda.Code.fromAsset('../services/auth/dist'),
     });
+
+    const api = new apigateway.RestApi(
+        this, 'PointGameApi', {restApiName: 'PointGameApi'});
+
+    const auth = api.root.addResource('auth');
+
+    auth.addResource('signup').addMethod(
+        'POST', new apigateway.LambdaIntegration(authLambda));
+    auth.addResource('login').addMethod(
+        'POST', new apigateway.LambdaIntegration(authLambda));
+
+    api.root.addResource('me').addMethod(
+        'GET', new apigateway.LambdaIntegration(authLambda));
   }
 }

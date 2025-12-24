@@ -1,6 +1,9 @@
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
 
+import {getMe} from '../user/service';
+
 import {login, signup} from './service';
+
 
 
 export async function handler(event: APIGatewayProxyEvent):
@@ -22,12 +25,36 @@ export async function handler(event: APIGatewayProxyEvent):
           statusCode: 201,
           body: JSON.stringify({user}),
         };
+
       case 'auth/login':
         const userID = await login(username, password);
         return {
           statusCode: 200,
           body: JSON.stringify({userID}),
         };
+
+      case '/me': {
+        if (event.httpMethod !== 'GET') {
+          return {
+            statusCode: 405,
+            body: 'Method Not Allowed',
+          };
+        }
+
+        const myID = event.queryStringParameters?.userID;
+        if (!myID) {
+          return {
+            statusCode: 400,
+            body: 'Missing userID',
+          };
+        }
+
+        const me = await getMe(myID);
+        return {
+          statusCode: 200, body: JSON.stringify(me)
+        }
+      }
+
       default:
         return {
           statusCode: 404,
@@ -36,7 +63,7 @@ export async function handler(event: APIGatewayProxyEvent):
     }
   } catch (err: any) {
     return {
-      statusCode: err.message === 'Invalid credentials' ? 401 : 400,
+      statusCode: err.message === 'Invalid' ? 401 : 400,
       body: JSON.stringify({message: err.message}),
     };
   }
