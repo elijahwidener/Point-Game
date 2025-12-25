@@ -8,11 +8,11 @@ const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
 const tables_1 = require("./dynamo/tables");
-async function loadUser(userId) {
+async function loadUser(userID) {
     const result = await client_1.ddb.send(new client_dynamodb_1.GetItemCommand({
         TableName: tables_1.TABLES.USERS,
         Key: {
-            userId: { S: userId },
+            userID: { S: userID },
         },
     }));
     if (!result.Item)

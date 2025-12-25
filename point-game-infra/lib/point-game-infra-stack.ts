@@ -131,8 +131,21 @@ export class PointGameInfraStack extends cdk.Stack {
       code: lambda.Code.fromAsset('../services/auth/dist'),
     });
 
-    const api = new apigateway.RestApi(
-        this, 'PointGameApi', {restApiName: 'PointGameApi'});
+    usersTable.grantReadWriteData(authLambda);
+
+    const api = new apigateway.RestApi(this, 'PointGameApi', {
+      restApiName: 'PointGameApi',
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: [
+          'Content-Type',
+          'X-Amz-Date',
+          'Authorization',
+          'X-Api-Key',
+        ],
+      },
+    });
 
     const auth = api.root.addResource('auth');
 

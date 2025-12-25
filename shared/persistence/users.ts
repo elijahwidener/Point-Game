@@ -6,12 +6,12 @@ import {TABLES} from './dynamo/tables';
 import {User} from './types';
 
 
-export async function loadUser(userId: string):
+export async function loadUser(userID: string):
     Promise<{userID: string; username: string; balance: number}|null> {
   const result = await ddb.send(new GetItemCommand({
     TableName: TABLES.USERS,
     Key: {
-      userId: {S: userId},
+      userID: {S: userID},
     },
   }));
 
