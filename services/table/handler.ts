@@ -50,7 +50,7 @@ export async function handler(event: APIGatewayProxyEvent):
 
       case 'GET /tables/{tableID}': {
         const tableID = event.pathParameters?.tableID!;
-        if (!tableID) return error(401, 'Missing tableID');
+        if (!tableID) return error(400, 'Missing tableID');
 
         const table = await getTable(tableID);
         return success(200, table);
@@ -67,11 +67,11 @@ export async function handler(event: APIGatewayProxyEvent):
 
         if (user.balance < buyIn) return error(409, 'Insufficient Funds');
 
-        enqueueInterRoundAction(
+        await enqueueInterRoundAction(
             tableID, sitDown, userID, buyIn);  // Game service command
         // lives in game service since if we are in interround phase, we want to
         // process right away
-        return success(204, true);
+        return success(204);
       }
 
       case 'POST /tables/{tableID}/stand': {
@@ -83,11 +83,11 @@ export async function handler(event: APIGatewayProxyEvent):
         // layer, or a user service inside table?
         const user = await getMe(userID);
 
-        enqueueInterRoundAction(
+        await enqueueInterRoundAction(
             tableID, standUp, userID, buyIn);  // Game service command
         // lives in game service since if we are in interround phase, we want to
         // process right away
-        return success(204, true);
+        return success(204);
       }
 
       // not going to stop gameplay, just stop hands from being delt
@@ -101,19 +101,19 @@ export async function handler(event: APIGatewayProxyEvent):
         }
         const table = await getTable(tableID)
 
-        if (table.owner != userID) return error(401, 'Unauthorized');
+        if (table.owner != userID) return error(403, 'Unauthorized');
 
         await game.pause_unpause_table();
 
         if (table.status === 'running') {
-          setTableStatus(paused);
+          await setTableStatus(paused);
         } else if (table.status === 'paused') {
-          setTableStatus(running);
+          await setTableStatus(running);
         } else
           return error(409, 'INVALID: Game has not started or is ended');
 
 
-        return success(204, 'Game will pause after end of hand');
+        return success(204);
       }
 
       case 'POST /tables/{tableID}/join': {
@@ -121,7 +121,7 @@ export async function handler(event: APIGatewayProxyEvent):
 
         const tableID = event.pathParameters?.tableID!;
         const {userID} = JSON.parse(event.body);
-        registerConnection(tableID, userID);
+        await registerConnection(tableID, userID);
         return success(200, {message: 'Connected'});
         // join needs to connect to websocket
         // then returns the user the table's game state...? or no... we return
@@ -135,7 +135,7 @@ export async function handler(event: APIGatewayProxyEvent):
         const tableID = event.pathParameters?.tableID!;
         const {userID} = JSON.parse(event.body);
         // disconnects the websocket
-        removeConnection(tableID, userID);
+        await removeConnection(tableID, userID);
         return success(200, {message: 'Disconnected'});
       }
 
@@ -150,14 +150,14 @@ export async function handler(event: APIGatewayProxyEvent):
         }
         const table = await getTable(tableID)
 
-        if (table.owner != userID) return error(401, 'Unauthorized');
+        if (table.owner != userID) return error(403, 'Unauthorized');
         if (table.status === 'ended')
           return error(409, 'INVALID: Game already ended');
 
 
-        end_game(tableID);  // finalizes ledger, removes game state, sets
-                            // table status to ended
-        return success(204, 'Game session ended');
+        await end_game(tableID);  // finalizes ledger, removes game state, sets
+                                  // table status to ended
+        return success(204);
       }
 
       case 'PATCH /tables/{tableID}/update_config': {
@@ -170,12 +170,12 @@ export async function handler(event: APIGatewayProxyEvent):
         }
         const table = await getTable(tableID)
 
-        if (table.owner != userID) return error(401, 'Unauthorized');
+        if (table.owner != userID) return error(403, 'Unauthorized');
 
-        enqueueInterRoundAction(configUpdate, config)
-        updateTableConfig(config);
+        await enqueueInterRoundAction(configUpdate, config);
+        await updateTableConfig(config);
 
-        return success(204, 'Config will update after end of hand');
+        return success(204);
       }
 
 
@@ -188,7 +188,7 @@ export async function handler(event: APIGatewayProxyEvent):
     }
   } catch (err: any) {
     return {
-      statusCode: err.message === 'Invalid' ? 401 : 400,
+      statusCode: err.message === 'Invalid' ? 401 : 500,
       headers: corsHeaders,
       body: JSON.stringify({message: err.message}),
     };
