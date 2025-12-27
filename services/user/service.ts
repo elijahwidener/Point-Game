@@ -1,9 +1,10 @@
+import {NotFoundError} from '../../shared/errors'
 import {applyBalanceUpdate, loadUser} from '../../shared/persistence/users';
 
 export async function getMe(userID: string) {
   const user = await loadUser(userID);
   if (!user) {
-    throw new Error('User not found');
+    throw new NotFoundError('User not found');
   }
 
   return user;

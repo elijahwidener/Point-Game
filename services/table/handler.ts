@@ -1,6 +1,9 @@
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
 
-import {registerConnection} from '../../shared/persistence/connectionStore';
+import {registerConnection, removeConnection} from '../../shared/persistence/connectionStore';
+import {getMe} from '../user/service';
+
+import {createGameTable, endGame, enqueueOrProcessInterRoundAction, getTable, listTables, sitDown, standUp, togglePause, updateConfig} from './service';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,7 +40,7 @@ export async function handler(event: APIGatewayProxyEvent):
         if (!userID || !config) {
           throw new Error('Invalid');
         }
-        const tableID = await create_table(userID, config);
+        const tableID = await createGameTable(userID, config);
 
         return success(201, tableID);
       }
@@ -65,10 +68,12 @@ export async function handler(event: APIGatewayProxyEvent):
         // layer, or a user service inside table?
         const user = await getMe(userID);
 
+        // should this check be here or should we have a wrapper in the table
+        // service?
         if (user.balance < buyIn) return error(409, 'Insufficient Funds');
 
-        await enqueueInterRoundAction(
-            tableID, sitDown, userID, buyIn);  // Game service command
+        await enqueueOrProcessInterRoundAction(
+            tableID, 'sitDown', userID, buyIn);  // Game service command
         // lives in game service since if we are in interround phase, we want to
         // process right away
         return success(204);
@@ -78,13 +83,13 @@ export async function handler(event: APIGatewayProxyEvent):
         if (!event.body) throw new Error('Invalid');
 
         const tableID = event.pathParameters?.tableID!;
-        const {userID, buyIn} = JSON.parse(event.body);
+        const {userID} = JSON.parse(event.body);
         // QUESTION: Should this be a call to the auth service, persistence
         // layer, or a user service inside table?
         const user = await getMe(userID);
 
-        await enqueueInterRoundAction(
-            tableID, standUp, userID, buyIn);  // Game service command
+        await enqueueOrProcessInterRoundAction(
+            tableID, 'standUp', userID, buyIn);  // Game service command
         // lives in game service since if we are in interround phase, we want to
         // process right away
         return success(204);
@@ -93,26 +98,12 @@ export async function handler(event: APIGatewayProxyEvent):
       // not going to stop gameplay, just stop hands from being delt
       case 'POST /tables/{tableID}/pause_unpause': {
         if (!event.body) throw new Error('Invalid');
-
         const tableID = event.pathParameters?.tableID!;
         const {userID} = JSON.parse(event.body);
         if (!userID || !tableID) {
           throw new Error('Invalid');
         }
-        const table = await getTable(tableID)
-
-        if (table.owner != userID) return error(403, 'Unauthorized');
-
-        await game.pause_unpause_table();
-
-        if (table.status === 'running') {
-          await setTableStatus(paused);
-        } else if (table.status === 'paused') {
-          await setTableStatus(running);
-        } else
-          return error(409, 'INVALID: Game has not started or is ended');
-
-
+        await togglePause(tableID, userID);
         return success(204);
       }
 
@@ -139,7 +130,7 @@ export async function handler(event: APIGatewayProxyEvent):
         return success(200, {message: 'Disconnected'});
       }
 
-
+      // DONE
       case 'POST /tables/{tableID}/end': {
         if (!event.body) throw new Error('Invalid');
 
@@ -148,36 +139,24 @@ export async function handler(event: APIGatewayProxyEvent):
         if (!userID || !tableID) {
           throw new Error('Invalid');
         }
-        const table = await getTable(tableID)
-
-        if (table.owner != userID) return error(403, 'Unauthorized');
-        if (table.status === 'ended')
-          return error(409, 'INVALID: Game already ended');
-
-
-        await end_game(tableID);  // finalizes ledger, removes game state, sets
-                                  // table status to ended
+        await endGame(tableID, userID);  // finalizes ledger, removes game
+                                         // state, sets table status to ended
         return success(204);
       }
-
+      // DONE
       case 'PATCH /tables/{tableID}/update_config': {
         if (!event.body) throw new Error('Invalid');
 
         const tableID = event.pathParameters?.tableID!;
         const {userID, config} = JSON.parse(event.body);
-        if (!userID || !tableID) {
+        if (!userID || !tableID || !config) {
           throw new Error('Invalid');
         }
-        const table = await getTable(tableID)
 
-        if (table.owner != userID) return error(403, 'Unauthorized');
-
-        await enqueueInterRoundAction(configUpdate, config);
-        await updateTableConfig(config);
+        await updateConfig(tableID, userID, config);
 
         return success(204);
       }
-
 
       default:
         return {
@@ -188,7 +167,7 @@ export async function handler(event: APIGatewayProxyEvent):
     }
   } catch (err: any) {
     return {
-      statusCode: err.message === 'Invalid' ? 401 : 500,
+      statusCode: err.statusCode || 500,
       headers: corsHeaders,
       body: JSON.stringify({message: err.message}),
     };
