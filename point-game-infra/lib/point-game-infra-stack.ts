@@ -28,7 +28,7 @@ export class PointGameInfraStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    new dynamodb.Table(this, 'GameTables', {
+    const gameTables = new dynamodb.Table(this, 'GameTables', {
       tableName: 'GameTables',
       partitionKey: {
         name: 'tableID',
@@ -156,5 +156,52 @@ export class PointGameInfraStack extends cdk.Stack {
 
     api.root.addResource('me').addMethod(
         'GET', new apigateway.LambdaIntegration(authLambda));
+
+    const tableLambda = new lambda.Function(this, 'TableLambda', {
+      functionName: 'TableLambda',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'services/table/index.handler',
+      code: lambda.Code.fromAsset('../services/table/dist'),
+    });
+
+    usersTable.grantReadData(tableLambda);
+    gameTables.grantReadData(tableLambda);
+
+    const tables = api.root.addResource('tables')
+
+
+    tables.addMethod('GET', new apigateway.LambdaIntegration(tableLambda));
+    tables.addMethod('POST', new apigateway.LambdaIntegration(tableLambda));
+
+    const tableByID = tables.addResource('{tableID}');
+    tableByID.addMethod('GET', new apigateway.LambdaIntegration(tableLambda));
+
+    const joinResource = tableByID.addResource('join');
+    joinResource.addMethod(
+        'POST', new apigateway.LambdaIntegration(tableLambda));
+
+    const leaveResource = tableByID.addResource('leave');
+    leaveResource.addMethod(
+        'POST', new apigateway.LambdaIntegration(tableLambda));
+
+    const sitResource = tableByID.addResource('sit');
+    sitResource.addMethod(
+        'POST', new apigateway.LambdaIntegration(tableLambda));
+
+    const standResource = tableByID.addResource('stand');
+    standResource.addMethod(
+        'POST', new apigateway.LambdaIntegration(tableLambda));
+
+    const pauseResource = tableByID.addResource('pause_unpause');
+    pauseResource.addMethod(
+        'POST', new apigateway.LambdaIntegration(tableLambda));
+
+    const endResource = tableByID.addResource('end');
+    endResource.addMethod(
+        'POST', new apigateway.LambdaIntegration(tableLambda));
+
+    const configResource = tableByID.addResource('config');
+    configResource.addMethod(
+        'PATCH', new apigateway.LambdaIntegration(tableLambda));
   }
 }
