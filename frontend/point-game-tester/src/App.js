@@ -4,6 +4,8 @@ const API_BASE_URL =
     'https://52keqe3is0.execute-api.us-east-1.amazonaws.com/prod/';
 
 const API_COMMANDS = {
+
+  // AUTH
   'auth.signup': {
     method: 'POST',
     endpoint: '/auth/signup',
@@ -21,6 +23,54 @@ const API_COMMANDS = {
     endpoint: '/me',
     args: ['userID'],
     query: (args) => ({userID: args[0]})
+  },
+
+  // TABLES
+  'tables.create': {
+    method: 'POST',
+    endpoint: '/tables',
+    args: ['userID', 'ante', 'smallBlind', 'bigBlind'],
+    body: (args) => ({
+      userID: args[0],
+      config: {
+        ante: parseInt(args[1]),
+        smallBlind: parseInt(args[2]),
+        bigBlind: parseInt(args[3])
+      }
+    })
+  },
+
+  'tables.list': {method: 'GET', endpoint: '/tables', args: []},
+
+  'tables.get': {
+    method: 'GET',
+    endpoint: '/tables',
+    args: ['tableID'],
+    path: (args) => `/tables/${args[0]}`
+  },
+
+  'tables.connect': {
+    method: 'POST',
+    endpoint: '/tables',
+    args: ['tableID', 'userID'],
+    path: (args) => `/tables/${args[0]}/connect`,
+    body: (args) => ({userID: args[1]})
+  },
+
+  'tables.sit': {
+    method: 'POST',
+    endpoint: '/tables',
+    args: ['tableID', 'userID', 'buyIn'],
+    path: (args) => `/tables/${args[0]}/sit`,
+    body: (args) => ({userID: args[1], buyIn: parseInt(args[2])})
+  },
+
+  'tables.end': {
+    method: 'POST',
+    endpoint: '/tables',
+    args: ['tableID', 'userID'],
+    path: (args) => `/tables/${args[0]}/end`,
+    body: (args) => ({userID: args[1]})
   }
 };
 

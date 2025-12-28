@@ -3,7 +3,7 @@ import {randomUUID} from 'crypto';
 import {ConflictError, NotFoundError, UnauthorizedError} from '../../shared/errors';
 import {loadGameState} from '../../shared/persistence/gameState'
 import {createTable, listTables, loadGameTable, updateTableConfig, updateTableStatus} from '../../shared/persistence/gameTable';
-import {enqueueInterRoundAction} from '../../shared/persistence/InterRoundActionQueue';
+import {enqueueInterRoundAction} from '../../shared/persistence/interRoundActionQueue';
 import {GameTable, InterRoundActions, InterRoundActionType, TableConfig, TableListFilter} from '../../shared/persistence/types';
 import {getMe} from '../user/service'
 

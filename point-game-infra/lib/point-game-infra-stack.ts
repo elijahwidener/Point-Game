@@ -128,7 +128,7 @@ export class PointGameInfraStack extends cdk.Stack {
       functionName: 'AuthLambda',
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'services/auth/index.handler',
-      code: lambda.Code.fromAsset('../services/auth/dist'),
+      code: lambda.Code.fromAsset('../dist'),
     });
 
     usersTable.grantReadWriteData(authLambda);
@@ -161,7 +161,7 @@ export class PointGameInfraStack extends cdk.Stack {
       functionName: 'TableLambda',
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'services/table/index.handler',
-      code: lambda.Code.fromAsset('../services/table/dist'),
+      code: lambda.Code.fromAsset('../dist'),
     });
 
     usersTable.grantReadData(tableLambda);
