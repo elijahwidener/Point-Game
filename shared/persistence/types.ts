@@ -59,9 +59,17 @@ export interface HandSnapshot {
   gameState: GameState;  // consider changing this because storing tons of game
                          // states can be expensive
 }
+export const InterRoundActions = {
+  JOIN: 'Join',
+  LEAVE: 'Leave',
+  SIT_UP: 'Toggle Away',
+  SIT_DOWN: 'Sit Down',
+  CONFIG_UPDATE: 'Config Update',
+  END: 'End',
+} as const;
 
 export type InterRoundActionType =
-    'Join'|'Leave'|'Sit Up'|'Sit Down'|'Config Update'|'End';
+    typeof InterRoundActions[keyof typeof InterRoundActions];
 
 export interface InterRoundAction {
   tableID: string;

@@ -1,9 +1,8 @@
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
 
-import {registerConnection, removeConnection} from '../../shared/persistence/connectionStore';
-import {getMe} from '../user/service';
+import {removeConnection} from '../../shared/persistence/connectionStore';
 
-import {createGameTable, endGame, enqueueOrProcessInterRoundAction, getTable, listTables, sitDown, standUp, togglePause, updateConfig} from './service';
+import {connectToTable, createGameTable, endGame, getTable, listGameTables, takeSeat, togglePause, updateConfig} from './service';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,7 +46,7 @@ export async function handler(event: APIGatewayProxyEvent):
 
       case 'GET /tables': {
         const filter = event.queryStringParameters || {};
-        const tables = await listTables(filter);
+        const tables: any[] = await listGameTables(filter);
         return success(200, {tables});
       }
 
@@ -59,43 +58,7 @@ export async function handler(event: APIGatewayProxyEvent):
         return success(200, table);
       }
 
-      case 'POST /tables/{tableID}/sit': {
-        if (!event.body) throw new Error('Invalid');
-
-        const tableID = event.pathParameters?.tableID!;
-        const {userID, buyIn} = JSON.parse(event.body);
-        // QUESTION: Should this be a call to the auth service, persistence
-        // layer, or a user service inside table?
-        const user = await getMe(userID);
-
-        // should this check be here or should we have a wrapper in the table
-        // service?
-        if (user.balance < buyIn) return error(409, 'Insufficient Funds');
-
-        await enqueueOrProcessInterRoundAction(
-            tableID, 'sitDown', userID, buyIn);  // Game service command
-        // lives in game service since if we are in interround phase, we want to
-        // process right away
-        return success(204);
-      }
-
-      case 'POST /tables/{tableID}/stand': {
-        if (!event.body) throw new Error('Invalid');
-
-        const tableID = event.pathParameters?.tableID!;
-        const {userID} = JSON.parse(event.body);
-        // QUESTION: Should this be a call to the auth service, persistence
-        // layer, or a user service inside table?
-        const user = await getMe(userID);
-
-        await enqueueOrProcessInterRoundAction(
-            tableID, 'standUp', userID, buyIn);  // Game service command
-        // lives in game service since if we are in interround phase, we want to
-        // process right away
-        return success(204);
-      }
-
-      // not going to stop gameplay, just stop hands from being delt
+      // not going to stop gameplay, just stop hands from being dealt
       case 'POST /tables/{tableID}/pause_unpause': {
         if (!event.body) throw new Error('Invalid');
         const tableID = event.pathParameters?.tableID!;
@@ -107,18 +70,29 @@ export async function handler(event: APIGatewayProxyEvent):
         return success(204);
       }
 
-      case 'POST /tables/{tableID}/join': {
+      case 'POST /tables/{tableID}/connect': {
         if (!event.body) throw new Error('Invalid');
 
         const tableID = event.pathParameters?.tableID!;
         const {userID} = JSON.parse(event.body);
-        await registerConnection(tableID, userID);
-        return success(200, {message: 'Connected'});
+        const table = await connectToTable(tableID);
+        return success(200, table);
+
         // join needs to connect to websocket
         // then returns the user the table's game state...? or no... we return
-        // the tableID or and a confirmation then the frontend recieves the
-        // websoccket thing...? need to think about how this works with
+        // the tableID or and a confirmation then the frontend receives the
+        // web sockets thing...? need to think about how this works with
         // frontend especially if we want multi tables.
+      }
+
+      case 'POST /tables/{tableID}/sit': {
+        if (!event.body) throw new Error('Invalid');
+
+        const tableID = event.pathParameters?.tableID!;
+        const {userID, buyIn} = JSON.parse(event.body);
+
+        await takeSeat(tableID, userID, buyIn);
+        return success(204);
       }
 
       case 'POST /tables/{tableID}/leave': {
