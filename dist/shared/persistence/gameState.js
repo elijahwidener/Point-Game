@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadGameState = loadGameState;
-exports.updateGameState = updateGameState;
+exports.updateGameState = exports.loadGameState = void 0;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -18,6 +17,7 @@ async function loadGameState(tableID) {
     }
     return (0, util_dynamodb_1.unmarshall)(result.Item);
 }
+exports.loadGameState = loadGameState;
 async function updateGameState(tableID, mutatedState, expectedGameSeq, timerSeq) {
     const nextState = {
         ...mutatedState,
@@ -35,3 +35,4 @@ async function updateGameState(tableID, mutatedState, expectedGameSeq, timerSeq)
     }));
     return expectedGameSeq + 1;
 }
+exports.updateGameState = updateGameState;

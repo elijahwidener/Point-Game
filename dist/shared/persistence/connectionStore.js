@@ -1,9 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadConnection = loadConnection;
-exports.loadTableConnections = loadTableConnections;
-exports.registerConnection = registerConnection;
-exports.removeConnection = removeConnection;
+exports.removeConnection = exports.registerConnection = exports.loadTableConnections = exports.loadConnection = void 0;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -21,6 +18,7 @@ async function loadConnection(tableID, connectionID) {
     }
     return (0, util_dynamodb_1.unmarshall)(result.Item);
 }
+exports.loadConnection = loadConnection;
 async function loadTableConnections(tableID) {
     const result = await client_1.ddb.send(new client_dynamodb_1.QueryCommand({
         TableName: tables_1.TABLES.CONNECTION_STORE,
@@ -34,6 +32,7 @@ async function loadTableConnections(tableID) {
     }
     return result.Items.map(item => (0, util_dynamodb_1.unmarshall)(item));
 }
+exports.loadTableConnections = loadTableConnections;
 async function registerConnection(tableID, connectionID, playerID) {
     const item = { tableID, connectionID, playerID };
     await client_1.ddb.send(new client_dynamodb_1.PutItemCommand({
@@ -42,6 +41,7 @@ async function registerConnection(tableID, connectionID, playerID) {
         ConditionExpression: 'attribute_not_exists(tableID) AND attribute_not_exists(connectionID)'
     }));
 }
+exports.registerConnection = registerConnection;
 async function removeConnection(tableID, connectionID) {
     await client_1.ddb.send(new client_dynamodb_1.DeleteItemCommand({
         TableName: tables_1.TABLES.CONNECTION_STORE,
@@ -51,3 +51,4 @@ async function removeConnection(tableID, connectionID) {
         },
     }));
 }
+exports.removeConnection = removeConnection;

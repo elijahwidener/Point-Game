@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handler = handler;
+exports.handler = void 0;
 const connectionStore_1 = require("../../shared/persistence/connectionStore");
 const service_1 = require("./service");
 const corsHeaders = {
@@ -130,3 +130,4 @@ async function handler(event) {
         };
     }
 }
+exports.handler = handler;

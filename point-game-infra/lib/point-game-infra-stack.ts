@@ -46,18 +46,19 @@ export class PointGameInfraStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    new dynamodb.Table(this, 'InterRoundActionQueue', {
-      tableName: 'InterRoundActionQueue',
-      partitionKey: {
-        name: 'tableID',
-        type: dynamodb.AttributeType.STRING,
-      },
-      sortKey: {
-        name: 'actionSeq',
-        type: dynamodb.AttributeType.NUMBER,
-      },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-    });
+    const interRoundActionQueue =
+        new dynamodb.Table(this, 'InterRoundActionQueue', {
+          tableName: 'InterRoundActionQueue',
+          partitionKey: {
+            name: 'tableID',
+            type: dynamodb.AttributeType.STRING,
+          },
+          sortKey: {
+            name: 'actionSeq',
+            type: dynamodb.AttributeType.NUMBER,
+          },
+          billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        });
 
     new dynamodb.Table(this, 'Ledger', {
       tableName: 'Ledger',
@@ -164,11 +165,11 @@ export class PointGameInfraStack extends cdk.Stack {
       code: lambda.Code.fromAsset('../dist'),
     });
 
-    usersTable.grantReadData(tableLambda);
-    gameTables.grantReadData(tableLambda);
+    usersTable.grantReadWriteData(tableLambda);
+    gameTables.grantReadWriteData(tableLambda);
+    interRoundActionQueue.grantReadWriteData(tableLambda);
 
     const tables = api.root.addResource('tables')
-
 
     tables.addMethod('GET', new apigateway.LambdaIntegration(tableLambda));
     tables.addMethod('POST', new apigateway.LambdaIntegration(tableLambda));

@@ -1,13 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createGameTable = createGameTable;
-exports.getTable = getTable;
-exports.connectToTable = connectToTable;
-exports.listGameTables = listGameTables;
-exports.takeSeat = takeSeat;
-exports.togglePause = togglePause;
-exports.updateConfig = updateConfig;
-exports.endGame = endGame;
+exports.endGame = exports.updateConfig = exports.togglePause = exports.takeSeat = exports.listGameTables = exports.connectToTable = exports.getTable = exports.createGameTable = void 0;
 const crypto_1 = require("crypto");
 const errors_1 = require("../../shared/errors");
 const gameState_1 = require("../../shared/persistence/gameState");
@@ -28,12 +21,14 @@ async function createGameTable(ownerID, config) {
     const tableID = (0, crypto_1.randomUUID)();
     return await (0, gameTable_1.createTable)(tableID, ownerID, config);
 }
+exports.createGameTable = createGameTable;
 async function getTable(tableID) {
     const table = await (0, gameTable_1.loadGameTable)(tableID);
     if (!table)
         throw new errors_1.NotFoundError('Table not found');
     return table;
 }
+exports.getTable = getTable;
 async function connectToTable(tableID) {
     const table = await (0, gameTable_1.loadGameTable)(tableID);
     if (!table)
@@ -43,11 +38,13 @@ async function connectToTable(tableID) {
     // Any validation (banned users, private tables, etc.)
     return table;
 }
+exports.connectToTable = connectToTable;
 // DONE
 async function listGameTables(filter) {
     // anything else here?
     return (0, gameTable_1.listTables)(filter);
 }
+exports.listGameTables = listGameTables;
 async function takeSeat(tableID, userID, buyIn) {
     // QUESTION: Should this be a call to the auth service, persistence
     // layer, or a user service inside table?
@@ -59,6 +56,7 @@ async function takeSeat(tableID, userID, buyIn) {
         throw new errors_1.NotFoundError('Table not found');
     await enqueueOrProcessInterRoundAction(table, types_1.InterRoundActions.JOIN, userID, buyIn);
 }
+exports.takeSeat = takeSeat;
 // DONE
 async function togglePause(tableID, userID) {
     const table = await getTable(tableID);
@@ -74,6 +72,7 @@ async function togglePause(tableID, userID) {
     else
         throw new errors_1.ConflictError('INVALID: Game has not started or is ended');
 }
+exports.togglePause = togglePause;
 // DONE
 async function updateConfig(tableID, userID, config) {
     const table = await (0, gameTable_1.loadGameTable)(tableID);
@@ -88,6 +87,7 @@ async function updateConfig(tableID, userID, config) {
     // Also update the table's config immediately (so new players see it)
     await (0, gameTable_1.updateTableConfig)(tableID, config);
 }
+exports.updateConfig = updateConfig;
 // DONE
 async function endGame(tableID, userID) {
     const table = await getTable(tableID);
@@ -97,3 +97,4 @@ async function endGame(tableID, userID) {
         throw new errors_1.ConflictError('Cannot end ended game');
     await (0, gameTable_1.updateTableStatus)(tableID, 'Ended');
 }
+exports.endGame = endGame;

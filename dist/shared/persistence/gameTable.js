@@ -1,11 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadGameTable = loadGameTable;
-exports.listTables = listTables;
-exports.updateTableStatus = updateTableStatus;
-exports.updateTableConfig = updateTableConfig;
-exports.updateCurrentInterroundActionSeq = updateCurrentInterroundActionSeq;
-exports.createTable = createTable;
+exports.createTable = exports.updateCurrentInterroundActionSeq = exports.updateTableConfig = exports.updateTableStatus = exports.listTables = exports.loadGameTable = void 0;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -22,6 +17,7 @@ async function loadGameTable(tableID) {
     }
     return (0, util_dynamodb_1.unmarshall)(result.Item);
 }
+exports.loadGameTable = loadGameTable;
 async function listTables(filter = {}) {
     const expressions = [];
     const names = {};
@@ -40,6 +36,7 @@ async function listTables(filter = {}) {
     }));
     return (result.Items ?? []).map((item) => (0, util_dynamodb_1.unmarshall)(item));
 }
+exports.listTables = listTables;
 async function updateTableStatus(tableID, status) {
     await client_1.ddb.send(new client_dynamodb_1.UpdateItemCommand({
         TableName: tables_1.TABLES.GAME_TABLES,
@@ -55,6 +52,7 @@ async function updateTableStatus(tableID, status) {
         },
     }));
 }
+exports.updateTableStatus = updateTableStatus;
 async function updateTableConfig(tableID, config) {
     await client_1.ddb.send(new client_dynamodb_1.UpdateItemCommand({
         TableName: tables_1.TABLES.GAME_TABLES,
@@ -70,6 +68,7 @@ async function updateTableConfig(tableID, config) {
         },
     }));
 }
+exports.updateTableConfig = updateTableConfig;
 async function updateCurrentInterroundActionSeq(tableID, expectedSeq, nextSeq) {
     await client_1.ddb.send(new client_dynamodb_1.UpdateItemCommand({
         TableName: tables_1.TABLES.GAME_TABLES,
@@ -84,6 +83,7 @@ async function updateCurrentInterroundActionSeq(tableID, expectedSeq, nextSeq) {
         },
     }));
 }
+exports.updateCurrentInterroundActionSeq = updateCurrentInterroundActionSeq;
 async function createTable(tableID, ownerID, config) {
     const table = {
         tableID,
@@ -100,3 +100,4 @@ async function createTable(tableID, ownerID, config) {
     }));
     return tableID;
 }
+exports.createTable = createTable;

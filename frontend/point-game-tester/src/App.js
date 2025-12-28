@@ -1,11 +1,10 @@
 import React, {useEffect, useRef, useState} from 'react';
 
 const API_BASE_URL =
-    'https://52keqe3is0.execute-api.us-east-1.amazonaws.com/prod/';
+    'https://52keqe3is0.execute-api.us-east-1.amazonaws.com/prod';
 
 const API_COMMANDS = {
 
-  // AUTH
   'auth.signup': {
     method: 'POST',
     endpoint: '/auth/signup',
@@ -25,7 +24,6 @@ const API_COMMANDS = {
     query: (args) => ({userID: args[0]})
   },
 
-  // TABLES
   'tables.create': {
     method: 'POST',
     endpoint: '/tables',
@@ -51,7 +49,7 @@ const API_COMMANDS = {
 
   'tables.connect': {
     method: 'POST',
-    endpoint: '/tables',
+    endpoint: '/tables/connect',
     args: ['tableID', 'userID'],
     path: (args) => `/tables/${args[0]}/connect`,
     body: (args) => ({userID: args[1]})
@@ -59,7 +57,7 @@ const API_COMMANDS = {
 
   'tables.sit': {
     method: 'POST',
-    endpoint: '/tables',
+    endpoint: '/tables/sit',
     args: ['tableID', 'userID', 'buyIn'],
     path: (args) => `/tables/${args[0]}/sit`,
     body: (args) => ({userID: args[1], buyIn: parseInt(args[2])})
@@ -67,7 +65,7 @@ const API_COMMANDS = {
 
   'tables.end': {
     method: 'POST',
-    endpoint: '/tables',
+    endpoint: '/tables/end',
     args: ['tableID', 'userID'],
     path: (args) => `/tables/${args[0]}/end`,
     body: (args) => ({userID: args[1]})
@@ -109,16 +107,6 @@ export default function APITester() {
     setHistory(prev => [...prev, {type, content, timestamp: Date.now()}]);
   };
 
-  const buildUrl = (endpoint, pathParams) => {
-    let url = endpoint;
-    if (pathParams) {
-      Object.entries(pathParams).forEach(([key, value]) => {
-        url = url.replace(`{${key}}`, value);
-      });
-    }
-    return `${apiUrl}${url}`;
-  };
-
   const buildQueryString = (queryParams) => {
     if (!queryParams) return '';
     const params = new URLSearchParams(queryParams);
@@ -140,9 +128,12 @@ export default function APITester() {
     }
 
     try {
-      // Build URL with path params
-      const pathParams = config.path ? config.path(args) : null;
-      let url = buildUrl(config.endpoint, pathParams);
+      let url;
+      if (config.path) {
+        url = apiUrl + config.path(args);
+      } else {
+        url = apiUrl + config.endpoint;
+      }
 
       // Add query params
       const queryParams = config.query ? config.query(args) : null;
@@ -164,6 +155,10 @@ export default function APITester() {
       // Make request
       addToHistory('info', `${config.method} ${url}`);
       const response = await fetch(url, options);
+      if (response.status === 204) {
+        addToHistory('success', 'Success (No Content)');
+        return;
+      }
       const data = await response.json();
 
       addToHistory(

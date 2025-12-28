@@ -1,9 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadUser = loadUser;
-exports.getAuthByUsername = getAuthByUsername;
-exports.createUser = createUser;
-exports.applyBalanceUpdate = applyBalanceUpdate;
+exports.applyBalanceUpdate = exports.createUser = exports.getAuthByUsername = exports.loadUser = void 0;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -24,6 +21,7 @@ async function loadUser(userID) {
         balance: user.balance,
     };
 }
+exports.loadUser = loadUser;
 async function getAuthByUsername(username) {
     const result = await client_1.ddb.send(new client_dynamodb_1.QueryCommand({
         TableName: tables_1.TABLES.USERS,
@@ -43,6 +41,7 @@ async function getAuthByUsername(username) {
         passwordHash: user.passwordHash,
     };
 }
+exports.getAuthByUsername = getAuthByUsername;
 async function createUser(userID, username, passwordHash, balance) {
     const user = {
         userID,
@@ -57,6 +56,7 @@ async function createUser(userID, username, passwordHash, balance) {
     }));
     return userID;
 }
+exports.createUser = createUser;
 async function applyBalanceUpdate(userID, delta) {
     const result = await client_1.ddb.send(new client_dynamodb_1.UpdateItemCommand({
         TableName: tables_1.TABLES.USERS,
@@ -77,3 +77,4 @@ async function applyBalanceUpdate(userID, delta) {
     }
     return Number(newBalance);
 }
+exports.applyBalanceUpdate = applyBalanceUpdate;

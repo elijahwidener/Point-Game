@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadActionLog = loadActionLog;
-exports.writeAction = writeAction;
+exports.writeAction = exports.loadActionLog = void 0;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -19,6 +18,7 @@ async function loadActionLog(handID, actionID) {
     }
     return (0, util_dynamodb_1.unmarshall)(result.Item);
 }
+exports.loadActionLog = loadActionLog;
 async function writeAction(entry) {
     await client_1.ddb.send(new client_dynamodb_1.PutItemCommand({
         TableName: tables_1.TABLES.ACTION_LOG,
@@ -26,3 +26,4 @@ async function writeAction(entry) {
         ConditionExpression: 'attribute_not_exists(actionSeq)',
     }));
 }
+exports.writeAction = writeAction;

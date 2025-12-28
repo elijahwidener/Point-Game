@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadHandSnapshot = loadHandSnapshot;
-exports.writeHandSnapshot = writeHandSnapshot;
+exports.writeHandSnapshot = exports.loadHandSnapshot = void 0;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -16,6 +15,7 @@ async function loadHandSnapshot(tableId, handSeq) {
     }));
     return result.Item ? (0, util_dynamodb_1.unmarshall)(result.Item) : null;
 }
+exports.loadHandSnapshot = loadHandSnapshot;
 async function writeHandSnapshot(tableID, handSeq, gameState) {
     const item = { tableID, handSeq, gameState };
     await client_1.ddb.send(new client_dynamodb_1.PutItemCommand({
@@ -24,3 +24,4 @@ async function writeHandSnapshot(tableID, handSeq, gameState) {
         ConditionExpression: 'attribute_not_exists(tableID) AND attribute_not_exists(handSeq)'
     }));
 }
+exports.writeHandSnapshot = writeHandSnapshot;

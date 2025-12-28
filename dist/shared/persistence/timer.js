@@ -1,8 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadTimer = loadTimer;
-exports.writeTimer = writeTimer;
-exports.deleteTimer = deleteTimer;
+exports.deleteTimer = exports.writeTimer = exports.loadTimer = void 0;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -20,6 +18,7 @@ async function loadTimer(tableID, timerSeq) {
     }
     return (0, util_dynamodb_1.unmarshall)(result.Item);
 }
+exports.loadTimer = loadTimer;
 async function writeTimer(tableID, timerSeq, playerID) {
     const deadline = Date.now();
     const item = { tableID, timerSeq, playerID, deadline };
@@ -29,6 +28,7 @@ async function writeTimer(tableID, timerSeq, playerID) {
         ConditionExpression: 'attribute_not_exists(tableID) AND attribute_not_exists(timerSeq)'
     }));
 }
+exports.writeTimer = writeTimer;
 async function deleteTimer(tableID, timerSeq) {
     await client_1.ddb.send(new client_dynamodb_1.DeleteItemCommand({
         TableName: tables_1.TABLES.TIMERS,
@@ -38,3 +38,4 @@ async function deleteTimer(tableID, timerSeq) {
         },
     }));
 }
+exports.deleteTimer = deleteTimer;

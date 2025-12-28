@@ -1,8 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadInterRoundActions = loadInterRoundActions;
-exports.enqueueInterRoundAction = enqueueInterRoundAction;
-exports.popInterRoundAction = popInterRoundAction;
+exports.popInterRoundAction = exports.enqueueInterRoundAction = exports.loadInterRoundActions = void 0;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -20,6 +18,7 @@ async function loadInterRoundActions(tableID) {
     return (result.Items ?? [])
         .map((item) => (0, util_dynamodb_1.unmarshall)(item));
 }
+exports.loadInterRoundActions = loadInterRoundActions;
 async function enqueueInterRoundAction(tableID, actionSeq, userID, type, payload) {
     const item = {
         tableID,
@@ -35,6 +34,7 @@ async function enqueueInterRoundAction(tableID, actionSeq, userID, type, payload
     }));
     return actionSeq;
 }
+exports.enqueueInterRoundAction = enqueueInterRoundAction;
 // returns and removes the next action in queue
 async function popInterRoundAction(tableID) {
     const res = await client_1.ddb.send(new client_dynamodb_1.QueryCommand({
@@ -43,7 +43,7 @@ async function popInterRoundAction(tableID) {
         ExpressionAttributeValues: {
             ':tableID': { S: tableID },
         },
-        ScanIndexForward: true, // lowest action first
+        ScanIndexForward: true,
         Limit: 1,
     }));
     if (!res.Items || res.Items.length == 0) {
@@ -58,3 +58,4 @@ async function popInterRoundAction(tableID) {
         },
     }));
 }
+exports.popInterRoundAction = popInterRoundAction;
