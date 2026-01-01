@@ -73,7 +73,7 @@ export class PointGameInfraStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    new dynamodb.Table(this, 'ConnectionStore', {
+    const connectionStore = new dynamodb.Table(this, 'ConnectionStore', {
       tableName: 'ConnectionStore',
       partitionKey: {
         name: 'tableID',
@@ -84,6 +84,12 @@ export class PointGameInfraStack extends cdk.Stack {
         type: dynamodb.AttributeType.STRING,
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    });
+
+    connectionStore.addGlobalSecondaryIndex({
+      indexName: 'ConnectionIDIndex',
+      partitionKey: {name: 'connectionID', type: dynamodb.AttributeType.STRING},
+      projectionType: dynamodb.ProjectionType.ALL
     });
 
     new dynamodb.Table(this, 'HandSnapshots', {
@@ -200,5 +206,21 @@ export class PointGameInfraStack extends cdk.Stack {
     const configResource = tableByID.addResource('config');
     configResource.addMethod(
         'PATCH', new apigateway.LambdaIntegration(tableLambda));
+
+
+
+    const webSocketApi = new apigatewayv2.WebSocketApi(this, 'GameWebSocket', {
+      connectRouteOptions: {
+        integration:
+            new WebSocketLambdaIntegration('ConnectIntegration', connectLambda)
+      },
+      disconnectRouteOptions: {
+        integration: new WebSocketLambdaIntegration(
+            'DisconnectIntegration', disconnectLambda)
+      }
+    });
+
+    const stage = new apigatewayv2.WebSocketStage(
+        this, 'GameStage', {webSocketApi, stageName: 'prod', autoDeploy: true});
   }
 }

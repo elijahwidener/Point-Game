@@ -20,6 +20,21 @@ export async function loadConnection(
   return unmarshall(result.Item) as ConnectionStore;
 }
 
+export async function loadConnectionByConnectionID(connectionID: string):
+    Promise<ConnectionStore|null> {
+  const result = await ddb.send(new QueryCommand({
+    TableName: TABLES.CONNECTION_STORE,
+    IndexName: 'ConnectionIDIndex',
+    KeyConditionExpression: 'ConnectionID = :ID',
+    ExpressionAttributeValues: {':ID': {S: connectionID}}
+  }));
+  if (!result.Items || result.Items.length === 0) {
+    return null;
+  }
+  return unmarshall(result.Items[0]) as ConnectionStore;
+}
+
+
 export async function loadTableConnections(tableID: string):
     Promise<ConnectionStore[]|null> {
   const result = await ddb.send(new QueryCommand({
