@@ -1,11 +1,11 @@
 import {randomUUID} from 'crypto';
 
 import {ConflictError, NotFoundError, UnauthorizedError} from '../../shared/errors';
-import {loadGameState} from '../../shared/persistence/gameState'
+import {createGameState, loadGameState} from '../../shared/persistence/gameState'
 import {createTable, listTables, loadGameTable, updateCurrentInterroundActionSeq, updateTableConfig, updateTableStatus} from '../../shared/persistence/gameTable';
 import {enqueueInterRoundAction} from '../../shared/persistence/interRoundActionQueue';
-import {GameTable, InterRoundAction, InterRoundActions, InterRoundActionType, TableConfig, TableListFilter} from '../../shared/persistence/types';
-import {processInterRoundAction} from '../game/engine';
+import {GameState, GameTable, InterRoundActions, InterRoundActionType, TableConfig, TableListFilter} from '../../shared/persistence/types';
+import {advanceGameState} from '../game/engine';
 import {getMe} from '../user/service'
 
 
@@ -24,11 +24,39 @@ async function enqueueOrProcessInterRoundAction(
   //}
 }
 
-// DONE
 export async function createGameTable(
     ownerID: string, config: TableConfig): Promise<string> {
   const tableID = randomUUID();
-  return await createTable(tableID, ownerID, config);
+  await createTable(tableID, ownerID, config);
+
+  const initialState: GameState = {
+    tableID,
+    handSeq: 0,
+    config,
+    seats: Array.from({length: 8}, (_, i) => ({
+                                     seat: i,
+                                     playerID: '',
+                                     stack: 0,
+                                     bet: 0,
+                                     holeCards: [],
+                                     folded: false,
+                                     active: false,
+                                     acted: false
+                                   })),
+    deck: [],
+    street: 'Interround',
+    boardCards: [],
+    button: 0,
+    pots: [],
+    currentPlayerSeat: 0,
+    currentBet: 0,
+    minRaise: config.bigBlind,
+    timerSeq: 0,
+    gameSeq: 0
+  };
+
+  await createGameState(initialState);
+  return tableID;
 }
 
 export async function getTable(tableID: string): Promise<GameTable> {
@@ -48,13 +76,11 @@ export async function connectToTable(tableID: string): Promise<GameTable> {
   return table;
 }
 
-// DONE
 export async function listGameTables(filter?: TableListFilter):
     Promise<GameTable[]> {
   // anything else here?
   return listTables(filter);
 }
-
 
 export async function takeSeat(
     tableID: string, userID: string, buyIn: number): Promise<void> {
@@ -70,7 +96,6 @@ export async function takeSeat(
       table, InterRoundActions.JOIN, userID, buyIn);
 }
 
-// DONE
 export async function togglePause(
     tableID: string, userID: string): Promise<void> {
   const table = await getTable(tableID)
@@ -86,7 +111,6 @@ export async function togglePause(
 }
 
 
-// DONE
 export async function updateConfig(
     tableID: string, userID: string, config: TableConfig): Promise<void> {
   const table = await loadGameTable(tableID);
@@ -104,7 +128,6 @@ export async function updateConfig(
   await updateTableConfig(tableID, config);
 }
 
-// DONE
 export async function endGame(tableID: string, userID: string): Promise<void> {
   const table = await getTable(tableID);
   if (table.ownerID !== userID)
@@ -112,6 +135,8 @@ export async function endGame(tableID: string, userID: string): Promise<void> {
   if (table.status === 'Ended')
     throw new ConflictError('Cannot end ended game');
 
+  await enqueueOrProcessInterRoundAction(
+      table, InterRoundActions.END, userID, []);
   await updateTableStatus(tableID, 'Ended');
 }
 
@@ -135,13 +160,5 @@ export async function startGame(
   }
 
   await updateTableStatus(tableID, 'Running');
-  // make a start action obj
-  const startAction: InterRoundAction = {
-    tableID,
-    actionSeq: -1,
-    userID: userID,
-    type: InterRoundActions.START,
-    payload: []
-  };
-  await processInterRoundAction(state, startAction);
+  await advanceGameState(tableID, state);
 }

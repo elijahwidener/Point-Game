@@ -18,6 +18,14 @@ export async function loadGameState(tableID: string): Promise<GameState|null> {
   return unmarshall(result.Item) as GameState;
 }
 
+export async function createGameState(initialState: GameState): Promise<void> {
+  await ddb.send(new PutItemCommand({
+    TableName: TABLES.GAME_STATE,
+    Item: marshall(initialState),
+    ConditionExpression: 'attribute_not_exists(tableID)',
+
+  }));
+}
 
 export async function updateGameState(
     tableID: string, mutatedState: GameState, expectedGameSeq: number,

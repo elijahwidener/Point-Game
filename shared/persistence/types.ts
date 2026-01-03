@@ -2,6 +2,7 @@
 
 export interface GameState {
   tableID: string;
+  handSeq: number;
   config: TableConfig;
   seats: GameSeat[];
   deck: Card[];
