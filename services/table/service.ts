@@ -2,10 +2,12 @@ import {randomUUID} from 'crypto';
 
 import {ConflictError, NotFoundError, UnauthorizedError} from '../../shared/errors';
 import {loadGameState} from '../../shared/persistence/gameState'
-import {createTable, listTables, loadGameTable, updateTableConfig, updateTableStatus} from '../../shared/persistence/gameTable';
+import {createTable, listTables, loadGameTable, updateCurrentInterroundActionSeq, updateTableConfig, updateTableStatus} from '../../shared/persistence/gameTable';
 import {enqueueInterRoundAction} from '../../shared/persistence/interRoundActionQueue';
-import {GameTable, InterRoundActions, InterRoundActionType, TableConfig, TableListFilter} from '../../shared/persistence/types';
+import {GameTable, InterRoundAction, InterRoundActions, InterRoundActionType, TableConfig, TableListFilter} from '../../shared/persistence/types';
+import {processInterRoundAction} from '../game/engine';
 import {getMe} from '../user/service'
+
 
 async function enqueueOrProcessInterRoundAction(
     table: GameTable, type: InterRoundActionType, userID: string,
@@ -16,6 +18,9 @@ async function enqueueOrProcessInterRoundAction(
   //  } else {
   await enqueueInterRoundAction(
       table.tableID, table.interRoundActionSeq + 1, userID, type, payload);
+  await updateCurrentInterroundActionSeq(
+      table.tableID, table.interRoundActionSeq, table.interRoundActionSeq + 1);
+
   //}
 }
 
@@ -108,4 +113,35 @@ export async function endGame(tableID: string, userID: string): Promise<void> {
     throw new ConflictError('Cannot end ended game');
 
   await updateTableStatus(tableID, 'Ended');
+}
+
+export async function startGame(
+    tableID: string, userID: string): Promise<void> {
+  const table = await getTable(tableID);
+  if (table.ownerID !== userID) {
+    throw new UnauthorizedError('Only table owner can start game');
+  }
+
+  if (table.status !== 'Waiting') {
+    throw new ConflictError('Game already started');
+  }
+
+  const state = await loadGameState(tableID);
+  if (!state) throw new NotFoundError('Game state not found');
+
+  const activePlayers = state.seats.filter(s => s.active).length;
+  if (activePlayers < 3) {
+    throw new ConflictError('Need at least 3 players to start');
+  }
+
+  await updateTableStatus(tableID, 'Running');
+  // make a start action obj
+  const startAction: InterRoundAction = {
+    tableID,
+    actionSeq: -1,
+    userID: userID,
+    type: InterRoundActions.START,
+    payload: []
+  };
+  await processInterRoundAction(state, startAction);
 }

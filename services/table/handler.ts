@@ -2,7 +2,7 @@ import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
 
 import {removeConnection} from '../../shared/persistence/connectionStore';
 
-import {connectToTable, createGameTable, endGame, getTable, listGameTables, takeSeat, togglePause, updateConfig} from './service';
+import {connectToTable, createGameTable, endGame, getTable, listGameTables, startGame, takeSeat, togglePause, updateConfig} from './service';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -104,7 +104,6 @@ export async function handler(event: APIGatewayProxyEvent):
         return success(200, {message: 'Disconnected'});
       }
 
-      // DONE
       case 'POST /tables/{tableID}/end': {
         if (!event.body) throw new Error('Invalid');
 
@@ -117,7 +116,6 @@ export async function handler(event: APIGatewayProxyEvent):
                                          // state, sets table status to ended
         return success(204);
       }
-      // DONE
       case 'PATCH /tables/{tableID}/update_config': {
         if (!event.body) throw new Error('Invalid');
 
@@ -129,6 +127,13 @@ export async function handler(event: APIGatewayProxyEvent):
 
         await updateConfig(tableID, userID, config);
 
+        return success(204);
+      }
+
+      case 'POST /tables/{tableID}/start': {
+        const tableID = event.pathParameters?.tableID!;
+        const {userID} = JSON.parse(event.body!);
+        await startGame(tableID, userID);
         return success(204);
       }
 

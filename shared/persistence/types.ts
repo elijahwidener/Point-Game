@@ -2,15 +2,40 @@
 
 export interface GameState {
   tableID: string;
-  config: any[];
-  seats: any[];
+  config: TableConfig;
+  seats: GameSeat[];
+  deck: Card[];
   street: string;
   boardCards: any[];
-  pots: any[];
+  button: number;
+  pots: Pot[];
   currentPlayerSeat: number;
   currentBet: number;
-  timerSequence: number;
-  gameSequence: number;
+  minRaise: number;
+  timerSeq: number;
+  gameSeq: number;
+}
+
+export interface GameSeat {
+  seat: number;
+  playerID: string;
+  stack: number;
+  bet: number;
+  holeCards: any[];
+  declaration?: 'high'|'low'|'both';
+  folded: boolean;
+  acted?: boolean;
+  active: boolean;
+}
+
+export interface Card {
+  rank: string;  // 'A', '2'-'9', 'T', 'J', 'Q', 'K'
+  suit: string;  // 'hearts', 'diamonds', 'clubs', 'spades'
+}
+
+export interface Pot {
+  amount: number;
+  eligibleSeats: number[];  // Seat indices
 }
 
 export interface ActionLog {
@@ -62,10 +87,11 @@ export interface HandSnapshot {
 export const InterRoundActions = {
   JOIN: 'Join',
   LEAVE: 'Leave',
-  SIT_UP: 'Toggle Away',
+  STAND_UP: 'Toggle Away',
   SIT_DOWN: 'Sit Down',
   CONFIG_UPDATE: 'Config Update',
   END: 'End',
+  START: 'Start'
 } as const;
 
 export type InterRoundActionType =
