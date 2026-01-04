@@ -4,6 +4,7 @@ import {GameState} from '../../../shared/persistence/types';
 
 import {collectRoundContributions, createShuffledDeck, dealCards, findNextActiveSeat, forceDiscards, postBlinds, resetActedFlags} from './helpers';
 import {processInterRoundAction} from './interRoundActions';
+import {resolveShowdown} from './showdown';
 
 export async function transitionToStreet(state: GameState): Promise<GameState> {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
@@ -137,9 +138,7 @@ export function transitionToDeclare(state: GameState): GameState {
 
 export function transitionToShowdown(state: GameState): GameState {
   state.street = 'Showdown';
-  // calculate
-  // award
-  return state;
+  return resolveShowdown(state);
 }
 
 async function transitionToInterround(state: GameState): Promise<GameState> {
