@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.transitionToShowdown = exports.transitionToDeclare = exports.transitionToRiver = exports.transitionToTurn = exports.transitionToFlop = exports.transitionToPreflop = exports.transitionToStreet = void 0;
+exports.transitionToStreet = transitionToStreet;
+exports.transitionToPreflop = transitionToPreflop;
+exports.transitionToFlop = transitionToFlop;
+exports.transitionToTurn = transitionToTurn;
+exports.transitionToRiver = transitionToRiver;
+exports.transitionToDeclare = transitionToDeclare;
+exports.transitionToShowdown = transitionToShowdown;
 const interRoundActionQueue_1 = require("../../../shared/persistence/interRoundActionQueue");
 const helpers_1 = require("./helpers");
 const interRoundActions_1 = require("./interRoundActions");
@@ -27,7 +33,6 @@ async function transitionToStreet(state) {
             throw new Error(`Unknown street: ${currentStreet}`);
     }
 }
-exports.transitionToStreet = transitionToStreet;
 function transitionToPreflop(state) {
     state.street = 'Preflop';
     state.handSeq++;
@@ -67,7 +72,6 @@ function transitionToPreflop(state) {
     state.currentPlayerSeat = (0, helpers_1.findNextActiveSeat)(state, bbSeat);
     return state;
 }
-exports.transitionToPreflop = transitionToPreflop;
 function transitionToFlop(state) {
     state.street = 'Flop';
     (0, helpers_1.collectRoundContributions)(state);
@@ -78,7 +82,6 @@ function transitionToFlop(state) {
     state.currentPlayerSeat = (0, helpers_1.findNextActiveSeat)(state, state.button);
     return state;
 }
-exports.transitionToFlop = transitionToFlop;
 function transitionToTurn(state) {
     state.street = 'Turn';
     (0, helpers_1.collectRoundContributions)(state);
@@ -92,7 +95,6 @@ function transitionToTurn(state) {
     state.currentPlayerSeat = (0, helpers_1.findNextActiveSeat)(state, state.button);
     return state;
 }
-exports.transitionToTurn = transitionToTurn;
 function transitionToRiver(state) {
     state.street = 'River';
     (0, helpers_1.collectRoundContributions)(state);
@@ -106,7 +108,6 @@ function transitionToRiver(state) {
     state.currentPlayerSeat = (0, helpers_1.findNextActiveSeat)(state, state.button);
     return state;
 }
-exports.transitionToRiver = transitionToRiver;
 function transitionToDeclare(state) {
     state.street = 'Declare';
     (0, helpers_1.collectRoundContributions)(state);
@@ -114,12 +115,10 @@ function transitionToDeclare(state) {
     (0, helpers_1.resetActedFlags)(state);
     return state;
 }
-exports.transitionToDeclare = transitionToDeclare;
 function transitionToShowdown(state) {
     state.street = 'Showdown';
     return (0, showdown_1.resolveShowdown)(state);
 }
-exports.transitionToShowdown = transitionToShowdown;
 async function transitionToInterround(state) {
     state.street = 'Interround';
     // load up the queue

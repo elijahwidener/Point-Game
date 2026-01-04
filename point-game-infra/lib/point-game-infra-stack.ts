@@ -238,8 +238,7 @@ export class PointGameInfraStack extends cdk.Stack {
     const tableByID = tables.addResource('{tableID}');
     tableByID.addMethod('GET', new apigateway.LambdaIntegration(tableLambda));
 
-    tableByID.addResource('connect').addMethod(
-        'POST', new apigateway.LambdaIntegration(tableLambda));
+
     tableByID.addResource('leave').addMethod(
         'POST', new apigateway.LambdaIntegration(tableLambda));
     tableByID.addResource('sit').addMethod(

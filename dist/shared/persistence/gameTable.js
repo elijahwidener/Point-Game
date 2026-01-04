@@ -1,15 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createTable = exports.updateCurrentInterroundActionSeq = exports.updateTableConfig = exports.updateTableStatus = exports.listTables = exports.loadGameTable = void 0;
+exports.loadGameTable = loadGameTable;
+exports.listTables = listTables;
+exports.updateTableStatus = updateTableStatus;
+exports.updateTableConfig = updateTableConfig;
+exports.updateCurrentInterroundActionSeq = updateCurrentInterroundActionSeq;
+exports.createTable = createTable;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
+const fields_1 = require("./dynamo/fields");
 const tables_1 = require("./dynamo/tables");
 async function loadGameTable(tableID) {
     const result = await client_1.ddb.send(new client_dynamodb_1.GetItemCommand({
         TableName: tables_1.TABLES.GAME_TABLES,
         Key: {
-            tableID: { S: tableID },
+            [fields_1.FIELDS.GAME_TABLES.TABLE_ID]: { S: tableID },
         },
     }));
     if (!result.Item) {
@@ -17,14 +23,13 @@ async function loadGameTable(tableID) {
     }
     return (0, util_dynamodb_1.unmarshall)(result.Item);
 }
-exports.loadGameTable = loadGameTable;
 async function listTables(filter = {}) {
     const expressions = [];
     const names = {};
     const values = {};
     if (filter.status) {
         expressions.push('#status = :status');
-        names['#status'] = 'status';
+        names['#status'] = fields_1.FIELDS.GAME_TABLES.STATUS;
         values[':status'] = { S: filter.status };
     }
     const result = await client_1.ddb.send(new client_dynamodb_1.ScanCommand({
@@ -36,54 +41,50 @@ async function listTables(filter = {}) {
     }));
     return (result.Items ?? []).map((item) => (0, util_dynamodb_1.unmarshall)(item));
 }
-exports.listTables = listTables;
 async function updateTableStatus(tableID, status) {
     await client_1.ddb.send(new client_dynamodb_1.UpdateItemCommand({
         TableName: tables_1.TABLES.GAME_TABLES,
         Key: {
-            tableID: { S: tableID },
+            [fields_1.FIELDS.GAME_TABLES.TABLE_ID]: { S: tableID },
         },
-        UpdateExpression: 'SET #status = :status',
+        UpdateExpression: `SET #status = :status`,
         ExpressionAttributeNames: {
-            '#status': 'status',
+            '#status': fields_1.FIELDS.GAME_TABLES.STATUS,
         },
         ExpressionAttributeValues: {
             ':status': { S: status },
         },
     }));
 }
-exports.updateTableStatus = updateTableStatus;
 async function updateTableConfig(tableID, config) {
     await client_1.ddb.send(new client_dynamodb_1.UpdateItemCommand({
         TableName: tables_1.TABLES.GAME_TABLES,
         Key: {
-            tableID: { S: tableID },
+            [fields_1.FIELDS.GAME_TABLES.TABLE_ID]: { S: tableID },
         },
-        UpdateExpression: 'SET #config = :config',
+        UpdateExpression: `SET #config = :config`,
         ExpressionAttributeNames: {
-            '#config': 'config',
+            '#config': fields_1.FIELDS.GAME_TABLES.CONFIG,
         },
         ExpressionAttributeValues: {
             ':config': { M: (0, util_dynamodb_1.marshall)(config) },
         },
     }));
 }
-exports.updateTableConfig = updateTableConfig;
 async function updateCurrentInterroundActionSeq(tableID, expectedSeq, nextSeq) {
     await client_1.ddb.send(new client_dynamodb_1.UpdateItemCommand({
         TableName: tables_1.TABLES.GAME_TABLES,
         Key: {
-            tableID: { S: tableID },
+            [fields_1.FIELDS.GAME_TABLES.TABLE_ID]: { S: tableID },
         },
-        UpdateExpression: 'SET currentInterroundActionSeq = :next',
-        ConditionExpression: 'currentInterroundActionSeq = :expected',
+        UpdateExpression: `SET ${fields_1.FIELDS.GAME_TABLES.INTER_ROUND_ACTION_SEQ} = :next`,
+        ConditionExpression: `${fields_1.FIELDS.GAME_TABLES.INTER_ROUND_ACTION_SEQ} = :expected`,
         ExpressionAttributeValues: {
             ':expected': { N: expectedSeq.toString() },
             ':next': { N: nextSeq.toString() },
         },
     }));
 }
-exports.updateCurrentInterroundActionSeq = updateCurrentInterroundActionSeq;
 async function createTable(tableID, ownerID, config) {
     const table = {
         tableID,
@@ -96,8 +97,7 @@ async function createTable(tableID, ownerID, config) {
     await client_1.ddb.send(new client_dynamodb_1.PutItemCommand({
         TableName: tables_1.TABLES.GAME_TABLES,
         Item: (0, util_dynamodb_1.marshall)(table),
-        ConditionExpression: 'attribute_not_exists(tableID)',
+        ConditionExpression: `attribute_not_exists(${fields_1.FIELDS.GAME_TABLES.TABLE_ID})`,
     }));
     return tableID;
 }
-exports.createTable = createTable;

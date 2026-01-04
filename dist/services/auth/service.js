@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.login = exports.signup = void 0;
+exports.signup = signup;
+exports.login = login;
 const crypto_1 = require("crypto");
 const users_1 = require("../../shared/persistence/users");
 async function signup(username, password) {
@@ -18,7 +19,6 @@ async function signup(username, password) {
     await (0, users_1.createUser)(userID, username, hashedPassword, 1000);
     return userID;
 }
-exports.signup = signup;
 async function login(username, password) {
     if (!username || !password) {
         throw new Error('Invalid input');
@@ -35,4 +35,3 @@ async function login(username, password) {
     }
     return credentials.userID;
 }
-exports.login = login;

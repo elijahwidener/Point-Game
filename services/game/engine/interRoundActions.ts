@@ -34,6 +34,7 @@ export async function processInterRoundAction(
 
   } catch (error) {
     console.error('Failed to process interround action:', error);
+    throw error;
   }
 }
 

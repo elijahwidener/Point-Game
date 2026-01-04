@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.advanceGameState = exports.processPlayerAction = void 0;
+exports.processPlayerAction = processPlayerAction;
+exports.advanceGameState = advanceGameState;
 const errors_1 = require("../../../shared/errors");
 const actionLog_1 = require("../../../shared/persistence/actionLog");
 const gameState_1 = require("../../../shared/persistence/gameState");
@@ -34,7 +35,6 @@ async function processPlayerAction(tableID, playerID, action, payload) {
     }
     // new turn timer (dont code this yet)
 }
-exports.processPlayerAction = processPlayerAction;
 async function advanceGameState(tableID, currentState) {
     let state = currentState;
     // Keep processing until we hit a player action street
@@ -66,4 +66,3 @@ async function advanceGameState(tableID, currentState) {
         }
     }
 }
-exports.advanceGameState = advanceGameState;

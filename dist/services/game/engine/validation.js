@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateAction = void 0;
+exports.validateAction = validateAction;
 const errors_1 = require("../../../shared/errors");
 function validateAction(state, playerID, action, payload) {
     // 1. Check game can accept player actions
@@ -32,7 +32,6 @@ function validateAction(state, playerID, action, payload) {
             throw new errors_1.BadRequestError(`Unknown action: ${action}`);
     }
 }
-exports.validateAction = validateAction;
 function validateCheck(state, seat) {
     if (seat.bet !== state.currentBet)
         throw new errors_1.BadRequestError('Cannot check - must call or raise');

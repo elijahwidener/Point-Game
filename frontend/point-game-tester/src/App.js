@@ -46,13 +46,6 @@ const API_COMMANDS = {
     args: ['tableID'],
     path: (args) => `/tables/${args[0]}`
   },
-  'tables.connect': {
-    method: 'POST',
-    endpoint: '/tables/connect',
-    args: ['tableID', 'userID'],
-    path: (args) => `/tables/${args[0]}/connect`,
-    body: (args) => ({userID: args[1]})
-  },
   'tables.sit': {
     method: 'POST',
     endpoint: '/tables/sit',
@@ -199,27 +192,27 @@ export default function APITester() {
           return;
         }
 
-        const newWs = new WebSocket(WS_URL);
+        const newWs =
+            new WebSocket(`${WS_URL}?tableID=${tableID}&userID=${userID}`);
 
         newWs.onopen = () => {
           addToHistory('success', `WebSocket connected to ${WS_URL}`);
-          // Send initial connection message
-          newWs.send(JSON.stringify({tableID, userID}));
           setWsConnected(true);
         };
 
         newWs.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          addToHistory('ws-message', JSON.stringify(data, null, 2));
+          console.log('WebSocket response:', event.data);
+          addToHistory('ws-message', event.data);
         };
 
         newWs.onerror = (error) => {
-          addToHistory('error', 'WebSocket error');
           console.error('WebSocket error:', error);
+          addToHistory('error', `WebSocket error: ${JSON.stringify(error)}`);
         };
 
-        newWs.onclose = () => {
-          addToHistory('info', 'WebSocket disconnected');
+        newWs.onclose = (event) => {
+          console.log('WebSocket closed:', event.code, event.reason);
+          addToHistory('info', `Disconnected: ${event.code} - ${event.reason}`);
           setWsConnected(false);
           setWs(null);
         };
@@ -266,6 +259,10 @@ export default function APITester() {
 
         ws.send(JSON.stringify(message));
         addToHistory('ws-send', JSON.stringify(message, null, 2));
+        break;
+      }
+
+      default: {
         break;
       }
     }

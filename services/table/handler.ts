@@ -2,7 +2,7 @@ import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
 
 import {removeConnection} from '../../shared/persistence/connectionStore';
 
-import {connectToTable, createGameTable, endGame, getTable, listGameTables, startGame, takeSeat, togglePause, updateConfig} from './service';
+import {createGameTable, endGame, getTable, listGameTables, startGame, takeSeat, togglePause, updateConfig} from './service';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -70,21 +70,6 @@ export async function handler(event: APIGatewayProxyEvent):
         return success(204);
       }
 
-      case 'POST /tables/{tableID}/connect': {
-        if (!event.body) throw new Error('Invalid');
-
-        const tableID = event.pathParameters?.tableID!;
-        const {userID} = JSON.parse(event.body);
-        const table = await connectToTable(tableID);
-        return success(200, table);
-
-        // join needs to connect to websocket
-        // then returns the user the table's game state...? or no... we return
-        // the tableID or and a confirmation then the frontend receives the
-        // web sockets thing...? need to think about how this works with
-        // frontend especially if we want multi tables.
-      }
-
       case 'POST /tables/{tableID}/sit': {
         if (!event.body) throw new Error('Invalid');
 
@@ -99,7 +84,8 @@ export async function handler(event: APIGatewayProxyEvent):
         if (!event.body) throw new Error('Invalid');
         const tableID = event.pathParameters?.tableID!;
         const {userID} = JSON.parse(event.body);
-        // disconnects the websocket
+        // TODO: make this clean up the user from the game
+        // the websocket removal will be handled elsewhere
         await removeConnection(tableID, userID);
         return success(200, {message: 'Disconnected'});
       }

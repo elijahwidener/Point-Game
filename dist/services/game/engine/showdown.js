@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveShowdown = void 0;
+exports.resolveShowdown = resolveShowdown;
 function resolveShowdown(state) {
     // Step 1-4: Evaluate hands
     const { highGroup, lowGroup } = determineWinners(state);
@@ -10,7 +10,6 @@ function resolveShowdown(state) {
     }
     return state;
 }
-exports.resolveShowdown = resolveShowdown;
 function determineWinners(state) {
     // Step 0: Ensure declarations
     // if someone did not declare in time, help them out by declaring them based
@@ -38,21 +37,21 @@ function determineWinners(state) {
         if (seat.declaration === 'high' || seat.declaration === 'both') {
             highGroup.push({
                 seat,
-                value: evaluateHand(seat.holeCards, 11),
+                value: evaluateHand(seat.holeCards, 11), // Ace = 11
                 declaration: seat.declaration
             });
         }
         if (seat.declaration === 'low' || seat.declaration === 'both') {
             lowGroup.push({
                 seat,
-                value: evaluateHand(seat.holeCards, 1),
+                value: evaluateHand(seat.holeCards, 1), // Ace = 1
                 declaration: seat.declaration
             });
         }
         if (seat.declaration === 'both') {
             bothGroup.push({
                 seat,
-                value: 0,
+                value: 0, // Not used for sorting
                 declaration: 'both'
             });
         }

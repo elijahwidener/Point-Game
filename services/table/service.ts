@@ -1,7 +1,7 @@
 import {randomUUID} from 'crypto';
 
 import {ConflictError, NotFoundError, UnauthorizedError} from '../../shared/errors';
-import {createGameState, loadGameState} from '../../shared/persistence/gameState'
+import {createGameState, loadGameState, updateGameState} from '../../shared/persistence/gameState'
 import {createTable, listTables, loadGameTable, updateCurrentInterroundActionSeq, updateTableConfig, updateTableStatus} from '../../shared/persistence/gameTable';
 import {enqueueInterRoundAction} from '../../shared/persistence/interRoundActionQueue';
 import {GameState, GameTable, InterRoundAction, InterRoundActions, InterRoundActionType, TableConfig, TableListFilter} from '../../shared/persistence/types';
@@ -14,6 +14,7 @@ async function enqueueOrProcessInterRoundAction(
     table: GameTable, type: InterRoundActionType, userID: string,
     payload: any): Promise<void> {
   const gameState = await loadGameState(table.tableID);
+  if (!gameState) throw new NotFoundError('GameState not found');
   if (gameState?.street === 'Interround') {
     const action: InterRoundAction = {
       tableID: table.tableID,
@@ -22,9 +23,8 @@ async function enqueueOrProcessInterRoundAction(
       type,
       payload
     };
-    const state = await loadGameState(table.tableID);
-    if (!state) throw new NotFoundError('GameState not found');
-    await processInterRoundAction(state, action);
+    await processInterRoundAction(gameState, action);
+    await updateGameState(table.tableID, gameState, gameState.gameSeq);
   } else {
     await enqueueInterRoundAction(
         table.tableID, table.interRoundActionSeq + 1, userID, type, payload);
@@ -72,17 +72,6 @@ export async function createGameTable(
 export async function getTable(tableID: string): Promise<GameTable> {
   const table = await loadGameTable(tableID);
   if (!table) throw new NotFoundError('Table not found');
-  return table;
-}
-
-export async function connectToTable(tableID: string): Promise<GameTable> {
-  const table = await loadGameTable(tableID);
-  if (!table) throw new NotFoundError('Table not found');
-  // WebSocket connection happens separately via $connect route
-  // This just validates access and returns table data
-
-  // Any validation (banned users, private tables, etc.)
-
   return table;
 }
 

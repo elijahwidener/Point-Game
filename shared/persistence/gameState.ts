@@ -39,7 +39,7 @@ export async function updateGameState(
 
   await ddb.send(new PutItemCommand({
     TableName: TABLES.GAME_STATE,
-    Item: marshall(nextState),
+    Item: marshall(nextState, {removeUndefinedValues: true}),
     ConditionExpression: `${FIELDS.GAME_STATE.GAME_SEQ} = :expectedSeq`,
     ExpressionAttributeValues: {
       ':expectedSeq': {N: expectedGameSeq.toString()},

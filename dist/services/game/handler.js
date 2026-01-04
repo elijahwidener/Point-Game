@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handler = void 0;
+exports.handler = handler;
 const engine_1 = require("./engine");
 async function handler(event) {
     const connectionID = event.requestContext.connectionId;
@@ -23,4 +23,3 @@ async function handler(event) {
         return { statusCode: 500, body: error.message };
     }
 }
-exports.handler = handler;

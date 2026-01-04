@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.processInterRoundAction = void 0;
+exports.processInterRoundAction = processInterRoundAction;
 const errors_1 = require("../../../shared/errors");
 const types_1 = require("../../../shared/persistence/types");
 const service_1 = require("../../user/service");
@@ -32,9 +32,9 @@ async function processInterRoundAction(state, action) {
     }
     catch (error) {
         console.error('Failed to process interround action:', error);
+        throw error;
     }
 }
-exports.processInterRoundAction = processInterRoundAction;
 async function processJoin(state, action) {
     const buyIn = action.payload;
     const userID = action.userID;

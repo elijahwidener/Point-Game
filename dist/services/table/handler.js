@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handler = void 0;
+exports.handler = handler;
 const connectionStore_1 = require("../../shared/persistence/connectionStore");
 const service_1 = require("./service");
 const corsHeaders = {
@@ -59,19 +59,6 @@ async function handler(event) {
                 await (0, service_1.togglePause)(tableID, userID);
                 return success(204);
             }
-            case 'POST /tables/{tableID}/connect': {
-                if (!event.body)
-                    throw new Error('Invalid');
-                const tableID = event.pathParameters?.tableID;
-                const { userID } = JSON.parse(event.body);
-                const table = await (0, service_1.connectToTable)(tableID);
-                return success(200, table);
-                // join needs to connect to websocket
-                // then returns the user the table's game state...? or no... we return
-                // the tableID or and a confirmation then the frontend receives the
-                // web sockets thing...? need to think about how this works with
-                // frontend especially if we want multi tables.
-            }
             case 'POST /tables/{tableID}/sit': {
                 if (!event.body)
                     throw new Error('Invalid');
@@ -85,7 +72,8 @@ async function handler(event) {
                     throw new Error('Invalid');
                 const tableID = event.pathParameters?.tableID;
                 const { userID } = JSON.parse(event.body);
-                // disconnects the websocket
+                // TODO: make this clean up the user from the game
+                // the websocket removal will be handled elsewhere
                 await (0, connectionStore_1.removeConnection)(tableID, userID);
                 return success(200, { message: 'Disconnected' });
             }
@@ -134,4 +122,3 @@ async function handler(event) {
         };
     }
 }
-exports.handler = handler;

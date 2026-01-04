@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isActionClosed = exports.advanceToNextPlayer = exports.applyPlayerAction = void 0;
+exports.applyPlayerAction = applyPlayerAction;
+exports.advanceToNextPlayer = advanceToNextPlayer;
+exports.isActionClosed = isActionClosed;
 function applyPlayerAction(state, playerID, action, payload) {
     // Deep clone state to avoid mutations
     const newState = JSON.parse(JSON.stringify(state));
@@ -28,7 +30,6 @@ function applyPlayerAction(state, playerID, action, payload) {
     }
     return newState;
 }
-exports.applyPlayerAction = applyPlayerAction;
 function applyCheck(state, seat) {
     seat.acted = true;
 }
@@ -81,7 +82,6 @@ function advanceToNextPlayer(state) {
     // if we loop around and find no active players, isActionClosed will return
     // true
 }
-exports.advanceToNextPlayer = advanceToNextPlayer;
 function isActionClosed(state) {
     // If not in betting street, action is closed
     const bettingStreets = ['Preflop', 'Flop', 'Turn', 'River'];
@@ -102,4 +102,3 @@ function isActionClosed(state) {
     }
     return true;
 }
-exports.isActionClosed = isActionClosed;

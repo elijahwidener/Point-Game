@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handler = void 0;
+exports.handler = handler;
 const service_1 = require("../user/service");
 const service_2 = require("./service");
 const corsHeaders = {
@@ -75,4 +75,3 @@ async function handler(event) {
         };
     }
 }
-exports.handler = handler;

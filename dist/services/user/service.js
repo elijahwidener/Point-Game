@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyBalanceDelta = exports.getMe = void 0;
+exports.getMe = getMe;
+exports.applyBalanceDelta = applyBalanceDelta;
 const errors_1 = require("../../shared/errors");
 const users_1 = require("../../shared/persistence/users");
 async function getMe(userID) {
@@ -10,9 +11,7 @@ async function getMe(userID) {
     }
     return user;
 }
-exports.getMe = getMe;
 // INTERNAL ONLY — not exposed via HTTP
 async function applyBalanceDelta(userID, delta) {
     return (0, users_1.applyBalanceUpdate)(userID, delta);
 }
-exports.applyBalanceDelta = applyBalanceDelta;
