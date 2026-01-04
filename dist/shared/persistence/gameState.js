@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateGameState = exports.loadGameState = void 0;
+exports.updateGameState = exports.createGameState = exports.loadGameState = void 0;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -18,6 +18,14 @@ async function loadGameState(tableID) {
     return (0, util_dynamodb_1.unmarshall)(result.Item);
 }
 exports.loadGameState = loadGameState;
+async function createGameState(initialState) {
+    await client_1.ddb.send(new client_dynamodb_1.PutItemCommand({
+        TableName: tables_1.TABLES.GAME_STATE,
+        Item: (0, util_dynamodb_1.marshall)(initialState),
+        ConditionExpression: 'attribute_not_exists(tableID)',
+    }));
+}
+exports.createGameState = createGameState;
 async function updateGameState(tableID, mutatedState, expectedGameSeq, timerSeq) {
     const nextState = {
         ...mutatedState,

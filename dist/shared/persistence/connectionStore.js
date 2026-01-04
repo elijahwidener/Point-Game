@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeConnection = exports.registerConnection = exports.loadTableConnections = exports.loadConnection = void 0;
+exports.removeConnection = exports.registerConnection = exports.loadTableConnections = exports.loadConnectionByConnectionID = exports.loadConnection = void 0;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -19,6 +19,19 @@ async function loadConnection(tableID, connectionID) {
     return (0, util_dynamodb_1.unmarshall)(result.Item);
 }
 exports.loadConnection = loadConnection;
+async function loadConnectionByConnectionID(connectionID) {
+    const result = await client_1.ddb.send(new client_dynamodb_1.QueryCommand({
+        TableName: tables_1.TABLES.CONNECTION_STORE,
+        IndexName: 'ConnectionIDIndex',
+        KeyConditionExpression: 'ConnectionID = :ID',
+        ExpressionAttributeValues: { ':ID': { S: connectionID } }
+    }));
+    if (!result.Items || result.Items.length === 0) {
+        return null;
+    }
+    return (0, util_dynamodb_1.unmarshall)(result.Items[0]);
+}
+exports.loadConnectionByConnectionID = loadConnectionByConnectionID;
 async function loadTableConnections(tableID) {
     const result = await client_1.ddb.send(new client_dynamodb_1.QueryCommand({
         TableName: tables_1.TABLES.CONNECTION_STORE,

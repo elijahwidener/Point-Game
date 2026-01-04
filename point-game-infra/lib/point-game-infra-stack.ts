@@ -1,14 +1,18 @@
 import * as cdk from 'aws-cdk-lib';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import {WebSocketLambdaIntegration} from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
 
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
-
 export class PointGameInfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    // ========================================
+    // DynamoDB Tables
+    // ========================================
 
     const usersTable = new dynamodb.Table(this, 'Users', {
       tableName: 'Users',
@@ -37,7 +41,7 @@ export class PointGameInfraStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    new dynamodb.Table(this, 'GameState', {
+    const gameStateTable = new dynamodb.Table(this, 'GameState', {
       tableName: 'GameState',
       partitionKey: {
         name: 'tableID',
@@ -60,7 +64,7 @@ export class PointGameInfraStack extends cdk.Stack {
           billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
         });
 
-    new dynamodb.Table(this, 'Ledger', {
+    const ledgerTable = new dynamodb.Table(this, 'Ledger', {
       tableName: 'Ledger',
       partitionKey: {
         name: 'tableID',
@@ -92,7 +96,7 @@ export class PointGameInfraStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL
     });
 
-    new dynamodb.Table(this, 'HandSnapshots', {
+    const handSnapshotsTable = new dynamodb.Table(this, 'HandSnapshots', {
       tableName: 'HandSnapshots',
       partitionKey: {
         name: 'tableID',
@@ -105,10 +109,10 @@ export class PointGameInfraStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    new dynamodb.Table(this, 'ActionLog', {
+    const actionLogTable = new dynamodb.Table(this, 'ActionLog', {
       tableName: 'ActionLog',
       partitionKey: {
-        name: 'handID',  // ${tableID}#${handSeq}
+        name: 'handID',
         type: dynamodb.AttributeType.STRING,
       },
       sortKey: {
@@ -118,7 +122,7 @@ export class PointGameInfraStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    new dynamodb.Table(this, 'Timers', {
+    const timersTable = new dynamodb.Table(this, 'Timers', {
       tableName: 'Timers',
       partitionKey: {
         name: 'tableID',
@@ -131,14 +135,77 @@ export class PointGameInfraStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
+    // ========================================
+    // Lambda Functions
+    // ========================================
+
     const authLambda = new lambda.Function(this, 'AuthLambda', {
       functionName: 'AuthLambda',
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'services/auth/index.handler',
       code: lambda.Code.fromAsset('../dist'),
+      timeout: cdk.Duration.seconds(10),
     });
 
+    const tableLambda = new lambda.Function(this, 'TableLambda', {
+      functionName: 'TableLambda',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'services/table/index.handler',
+      code: lambda.Code.fromAsset('../dist'),
+      timeout: cdk.Duration.seconds(10),
+    });
+
+    const gameLambda = new lambda.Function(this, 'GameLambda', {
+      functionName: 'GameLambda',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'services/game/index.handler',
+      code: lambda.Code.fromAsset('../dist'),
+      timeout: cdk.Duration.seconds(10),
+    });
+
+    const connectLambda = new lambda.Function(this, 'ConnectLambda', {
+      functionName: 'ConnectLambda',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'services/websocket/connect/index.handler',
+      code: lambda.Code.fromAsset('../dist'),
+      timeout: cdk.Duration.seconds(10),
+    });
+
+    const disconnectLambda = new lambda.Function(this, 'DisconnectLambda', {
+      functionName: 'DisconnectLambda',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'services/websocket/disconnect/index.handler',
+      code: lambda.Code.fromAsset('../dist'),
+      timeout: cdk.Duration.seconds(10),
+    });
+
+    // ========================================
+    // Grant DynamoDB Permissions
+    // ========================================
+
     usersTable.grantReadWriteData(authLambda);
+
+    usersTable.grantReadWriteData(tableLambda);
+    gameTables.grantReadWriteData(tableLambda);
+    gameStateTable.grantReadWriteData(tableLambda);
+    interRoundActionQueue.grantReadWriteData(tableLambda);
+    connectionStore.grantReadWriteData(tableLambda);
+
+    gameStateTable.grantReadWriteData(gameLambda);
+    gameTables.grantReadWriteData(gameLambda);
+    actionLogTable.grantReadWriteData(gameLambda);
+    connectionStore.grantReadWriteData(gameLambda);
+    interRoundActionQueue.grantReadWriteData(gameLambda);
+    handSnapshotsTable.grantReadWriteData(gameLambda);
+    usersTable.grantReadWriteData(gameLambda);
+
+    connectionStore.grantReadWriteData(connectLambda);
+    gameTables.grantReadWriteData(connectLambda);
+    connectionStore.grantReadWriteData(disconnectLambda);
+
+    // ========================================
+    // REST API Gateway
+    // ========================================
 
     const api = new apigateway.RestApi(this, 'PointGameApi', {
       restApiName: 'PointGameApi',
@@ -154,60 +221,41 @@ export class PointGameInfraStack extends cdk.Stack {
       },
     });
 
+    // Auth routes
     const auth = api.root.addResource('auth');
-
     auth.addResource('signup').addMethod(
         'POST', new apigateway.LambdaIntegration(authLambda));
     auth.addResource('login').addMethod(
         'POST', new apigateway.LambdaIntegration(authLambda));
-
     api.root.addResource('me').addMethod(
         'GET', new apigateway.LambdaIntegration(authLambda));
 
-    const tableLambda = new lambda.Function(this, 'TableLambda', {
-      functionName: 'TableLambda',
-      runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'services/table/index.handler',
-      code: lambda.Code.fromAsset('../dist'),
-    });
-
-    usersTable.grantReadWriteData(tableLambda);
-    gameTables.grantReadWriteData(tableLambda);
-    interRoundActionQueue.grantReadWriteData(tableLambda);
-
-    const tables = api.root.addResource('tables')
-
+    // Table routes
+    const tables = api.root.addResource('tables');
     tables.addMethod('GET', new apigateway.LambdaIntegration(tableLambda));
     tables.addMethod('POST', new apigateway.LambdaIntegration(tableLambda));
 
     const tableByID = tables.addResource('{tableID}');
     tableByID.addMethod('GET', new apigateway.LambdaIntegration(tableLambda));
 
-    const joinResource = tableByID.addResource('connect');
-    joinResource.addMethod(
+    tableByID.addResource('connect').addMethod(
         'POST', new apigateway.LambdaIntegration(tableLambda));
-
-    const leaveResource = tableByID.addResource('leave');
-    leaveResource.addMethod(
+    tableByID.addResource('leave').addMethod(
         'POST', new apigateway.LambdaIntegration(tableLambda));
-
-    const sitResource = tableByID.addResource('sit');
-    sitResource.addMethod(
+    tableByID.addResource('sit').addMethod(
         'POST', new apigateway.LambdaIntegration(tableLambda));
-
-    const pauseResource = tableByID.addResource('pause_unpause');
-    pauseResource.addMethod(
+    tableByID.addResource('pause_unpause')
+        .addMethod('POST', new apigateway.LambdaIntegration(tableLambda));
+    tableByID.addResource('end').addMethod(
         'POST', new apigateway.LambdaIntegration(tableLambda));
-
-    const endResource = tableByID.addResource('end');
-    endResource.addMethod(
-        'POST', new apigateway.LambdaIntegration(tableLambda));
-
-    const configResource = tableByID.addResource('config');
-    configResource.addMethod(
+    tableByID.addResource('config').addMethod(
         'PATCH', new apigateway.LambdaIntegration(tableLambda));
+    tableByID.addResource('start').addMethod(
+        'POST', new apigateway.LambdaIntegration(tableLambda));
 
-
+    // ========================================
+    // WebSocket API Gateway
+    // ========================================
 
     const webSocketApi = new apigatewayv2.WebSocketApi(this, 'GameWebSocket', {
       connectRouteOptions: {
@@ -220,7 +268,29 @@ export class PointGameInfraStack extends cdk.Stack {
       }
     });
 
+    // Add default route for game actions
+    webSocketApi.addRoute('$default', {
+      integration:
+          new WebSocketLambdaIntegration('DefaultIntegration', gameLambda)
+    });
+
     const stage = new apigatewayv2.WebSocketStage(
         this, 'GameStage', {webSocketApi, stageName: 'prod', autoDeploy: true});
+
+    gameLambda.addEnvironment(
+        'WEBSOCKET_API_ENDPOINT',
+        `https://${webSocketApi.apiId}.execute-api.${
+            this.region}.amazonaws.com/${stage.stageName}`);
+
+    new cdk.CfnOutput(this, 'RestApiUrl', {
+      value: api.url,
+      description: 'REST API Gateway URL',
+    });
+
+    new cdk.CfnOutput(this, 'WebSocketUrl', {
+      value: `wss://${webSocketApi.apiId}.execute-api.${
+          this.region}.amazonaws.com/${stage.stageName}`,
+      description: 'WebSocket API Gateway URL',
+    });
   }
 }

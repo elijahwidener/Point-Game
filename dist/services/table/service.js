@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.endGame = exports.updateConfig = exports.togglePause = exports.takeSeat = exports.listGameTables = exports.connectToTable = exports.getTable = exports.createGameTable = void 0;
+exports.startGame = exports.endGame = exports.updateConfig = exports.togglePause = exports.takeSeat = exports.listGameTables = exports.connectToTable = exports.getTable = exports.createGameTable = void 0;
 const crypto_1 = require("crypto");
 const errors_1 = require("../../shared/errors");
 const gameState_1 = require("../../shared/persistence/gameState");
 const gameTable_1 = require("../../shared/persistence/gameTable");
 const interRoundActionQueue_1 = require("../../shared/persistence/interRoundActionQueue");
 const types_1 = require("../../shared/persistence/types");
+const engine_1 = require("../game/engine");
 const service_1 = require("../user/service");
 async function enqueueOrProcessInterRoundAction(table, type, userID, payload) {
     const gameState = await (0, gameState_1.loadGameState)(table.tableID);
@@ -14,12 +15,39 @@ async function enqueueOrProcessInterRoundAction(table, type, userID, payload) {
     //   await processInterRoundAction(table.tableID, type, payload);
     //  } else {
     await (0, interRoundActionQueue_1.enqueueInterRoundAction)(table.tableID, table.interRoundActionSeq + 1, userID, type, payload);
+    await (0, gameTable_1.updateCurrentInterroundActionSeq)(table.tableID, table.interRoundActionSeq, table.interRoundActionSeq + 1);
     //}
 }
-// DONE
 async function createGameTable(ownerID, config) {
     const tableID = (0, crypto_1.randomUUID)();
-    return await (0, gameTable_1.createTable)(tableID, ownerID, config);
+    await (0, gameTable_1.createTable)(tableID, ownerID, config);
+    const initialState = {
+        tableID,
+        handSeq: 0,
+        config,
+        seats: Array.from({ length: 8 }, (_, i) => ({
+            seat: i,
+            playerID: '',
+            stack: 0,
+            bet: 0,
+            holeCards: [],
+            folded: false,
+            active: false,
+            acted: false
+        })),
+        deck: [],
+        street: 'Interround',
+        boardCards: [],
+        button: 0,
+        pots: [],
+        currentPlayerSeat: 0,
+        currentBet: 0,
+        minRaise: config.bigBlind,
+        timerSeq: 0,
+        gameSeq: 0
+    };
+    await (0, gameState_1.createGameState)(initialState);
+    return tableID;
 }
 exports.createGameTable = createGameTable;
 async function getTable(tableID) {
@@ -39,7 +67,6 @@ async function connectToTable(tableID) {
     return table;
 }
 exports.connectToTable = connectToTable;
-// DONE
 async function listGameTables(filter) {
     // anything else here?
     return (0, gameTable_1.listTables)(filter);
@@ -57,7 +84,6 @@ async function takeSeat(tableID, userID, buyIn) {
     await enqueueOrProcessInterRoundAction(table, types_1.InterRoundActions.JOIN, userID, buyIn);
 }
 exports.takeSeat = takeSeat;
-// DONE
 async function togglePause(tableID, userID) {
     const table = await getTable(tableID);
     if (table.ownerID !=
@@ -73,7 +99,6 @@ async function togglePause(tableID, userID) {
         throw new errors_1.ConflictError('INVALID: Game has not started or is ended');
 }
 exports.togglePause = togglePause;
-// DONE
 async function updateConfig(tableID, userID, config) {
     const table = await (0, gameTable_1.loadGameTable)(tableID);
     if (!table)
@@ -88,13 +113,32 @@ async function updateConfig(tableID, userID, config) {
     await (0, gameTable_1.updateTableConfig)(tableID, config);
 }
 exports.updateConfig = updateConfig;
-// DONE
 async function endGame(tableID, userID) {
     const table = await getTable(tableID);
     if (table.ownerID !== userID)
         throw new errors_1.UnauthorizedError('Only table owner can end game');
     if (table.status === 'Ended')
         throw new errors_1.ConflictError('Cannot end ended game');
+    await enqueueOrProcessInterRoundAction(table, types_1.InterRoundActions.END, userID, []);
     await (0, gameTable_1.updateTableStatus)(tableID, 'Ended');
 }
 exports.endGame = endGame;
+async function startGame(tableID, userID) {
+    const table = await getTable(tableID);
+    if (table.ownerID !== userID) {
+        throw new errors_1.UnauthorizedError('Only table owner can start game');
+    }
+    if (table.status !== 'Waiting') {
+        throw new errors_1.ConflictError('Game already started');
+    }
+    const state = await (0, gameState_1.loadGameState)(tableID);
+    if (!state)
+        throw new errors_1.NotFoundError('Game state not found');
+    const activePlayers = state.seats.filter(s => s.active).length;
+    if (activePlayers < 3) {
+        throw new errors_1.ConflictError('Need at least 3 players to start');
+    }
+    await (0, gameTable_1.updateTableStatus)(tableID, 'Running');
+    await (0, engine_1.advanceGameState)(tableID, state);
+}
+exports.startGame = startGame;

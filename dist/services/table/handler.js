@@ -89,7 +89,6 @@ async function handler(event) {
                 await (0, connectionStore_1.removeConnection)(tableID, userID);
                 return success(200, { message: 'Disconnected' });
             }
-            // DONE
             case 'POST /tables/{tableID}/end': {
                 if (!event.body)
                     throw new Error('Invalid');
@@ -102,7 +101,6 @@ async function handler(event) {
                 // state, sets table status to ended
                 return success(204);
             }
-            // DONE
             case 'PATCH /tables/{tableID}/update_config': {
                 if (!event.body)
                     throw new Error('Invalid');
@@ -112,6 +110,12 @@ async function handler(event) {
                     throw new Error('Invalid');
                 }
                 await (0, service_1.updateConfig)(tableID, userID, config);
+                return success(204);
+            }
+            case 'POST /tables/{tableID}/start': {
+                const tableID = event.pathParameters?.tableID;
+                const { userID } = JSON.parse(event.body);
+                await (0, service_1.startGame)(tableID, userID);
                 return success(204);
             }
             default:

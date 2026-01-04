@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ConflictError = exports.UnauthorizedError = exports.NotFoundError = void 0;
+exports.BadRequestError = exports.ConflictError = exports.UnauthorizedError = exports.NotFoundError = void 0;
 class NotFoundError extends Error {
     constructor(message) {
         super(message);
@@ -25,3 +25,11 @@ class ConflictError extends Error {
     }
 }
 exports.ConflictError = ConflictError;
+class BadRequestError extends Error {
+    constructor(message) {
+        super(message);
+        this.statusCode = 400;
+        this.name = 'BadRequestError';
+    }
+}
+exports.BadRequestError = BadRequestError;

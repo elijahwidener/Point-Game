@@ -12,23 +12,23 @@ export async function broadcastState(tableID: string): Promise<void> {
 
   if (!state || !connections) return;
 
-  for (const conn of connections) {
+  await Promise.allSettled(connections.map(conn => {
     const filteredState = applyPrivacyFiltering(state, conn.playerID);
-    await postToConnection(tableID, conn.connectionID, filteredState);
-  }
+    return postToConnection(tableID, conn.connectionID, filteredState);
+  }));
 }
+
 
 export async function broadcastAction(
     tableID: string, action: any): Promise<void> {
   const connections = await loadTableConnections(tableID);
-
   if (!connections) return;
 
-  for (const conn of connections) {
-    await postToConnection(
-        tableID, conn.connectionID, {type: 'action', action});
-  }
+  await Promise.allSettled(connections.map(
+      conn => postToConnection(
+          tableID, conn.connectionID, {type: 'action', action})));
 }
+
 
 function applyPrivacyFiltering(state: any, playerID: string): any {
   // Filter out other players' hole cards

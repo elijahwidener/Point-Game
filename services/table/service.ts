@@ -4,8 +4,9 @@ import {ConflictError, NotFoundError, UnauthorizedError} from '../../shared/erro
 import {createGameState, loadGameState} from '../../shared/persistence/gameState'
 import {createTable, listTables, loadGameTable, updateCurrentInterroundActionSeq, updateTableConfig, updateTableStatus} from '../../shared/persistence/gameTable';
 import {enqueueInterRoundAction} from '../../shared/persistence/interRoundActionQueue';
-import {GameState, GameTable, InterRoundActions, InterRoundActionType, TableConfig, TableListFilter} from '../../shared/persistence/types';
+import {GameState, GameTable, InterRoundAction, InterRoundActions, InterRoundActionType, TableConfig, TableListFilter} from '../../shared/persistence/types';
 import {advanceGameState} from '../game/engine';
+import {processInterRoundAction} from '../game/engine/interRoundActions';
 import {getMe} from '../user/service'
 
 
@@ -13,15 +14,24 @@ async function enqueueOrProcessInterRoundAction(
     table: GameTable, type: InterRoundActionType, userID: string,
     payload: any): Promise<void> {
   const gameState = await loadGameState(table.tableID);
-  // if (gameState?.street === 'Interround') {
-  //   await processInterRoundAction(table.tableID, type, payload);
-  //  } else {
-  await enqueueInterRoundAction(
-      table.tableID, table.interRoundActionSeq + 1, userID, type, payload);
-  await updateCurrentInterroundActionSeq(
-      table.tableID, table.interRoundActionSeq, table.interRoundActionSeq + 1);
-
-  //}
+  if (gameState?.street === 'Interround') {
+    const action: InterRoundAction = {
+      tableID: table.tableID,
+      actionSeq: table.interRoundActionSeq + 1,
+      userID,
+      type,
+      payload
+    };
+    const state = await loadGameState(table.tableID);
+    if (!state) throw new NotFoundError('GameState not found');
+    await processInterRoundAction(state, action);
+  } else {
+    await enqueueInterRoundAction(
+        table.tableID, table.interRoundActionSeq + 1, userID, type, payload);
+    await updateCurrentInterroundActionSeq(
+        table.tableID, table.interRoundActionSeq,
+        table.interRoundActionSeq + 1);
+  }
 }
 
 export async function createGameTable(
@@ -91,6 +101,7 @@ export async function takeSeat(
 
   if (user.balance < buyIn) throw new ConflictError('Insufficient funds');
   if (!table) throw new NotFoundError('Table not found');
+  if (table.status === 'Ended') throw new ConflictError('Table has ended');
 
   await enqueueOrProcessInterRoundAction(
       table, InterRoundActions.JOIN, userID, buyIn);
@@ -147,8 +158,8 @@ export async function startGame(
     throw new UnauthorizedError('Only table owner can start game');
   }
 
-  if (table.status !== 'Waiting') {
-    throw new ConflictError('Game already started');
+  if (table.status === 'Running' || table.status === 'Ended') {
+    throw new ConflictError('Game already running or is ended');
   }
 
   const state = await loadGameState(tableID);
