@@ -2,6 +2,7 @@ import {DeleteItemCommand, GetItemCommand, PutItemCommand} from '@aws-sdk/client
 import {marshall, unmarshall} from '@aws-sdk/util-dynamodb';
 
 import {ddb} from './dynamo/client';
+import {FIELDS} from './dynamo/fields';
 import {TABLES} from './dynamo/tables';
 import {Timer} from './types';
 
@@ -11,8 +12,8 @@ export async function loadTimer(
   const result = await ddb.send(new GetItemCommand({
     TableName: TABLES.TIMERS,
     Key: {
-      tableID: {S: tableID},
-      timerSeq: {N: timerSeq.toString()},
+      [FIELDS.TIMERS.TABLE_ID]: {S: tableID},
+      [FIELDS.TIMERS.TIMER_SEQ]: {N: timerSeq.toString()},
     },
   }));
   if (!result.Item) {
@@ -30,8 +31,9 @@ export async function writeTimer(
   await ddb.send(new PutItemCommand({
     TableName: TABLES.TIMERS,
     Item: marshall(item),
-    ConditionExpression:
-        'attribute_not_exists(tableID) AND attribute_not_exists(timerSeq)'
+    ConditionExpression: `attribute_not_exists(${
+        FIELDS.TIMERS.TABLE_ID}) AND attribute_not_exists(${
+        FIELDS.TIMERS.TIMER_SEQ})`
   }));
 }
 
@@ -40,8 +42,8 @@ export async function deleteTimer(
   await ddb.send(new DeleteItemCommand({
     TableName: TABLES.TIMERS,
     Key: {
-      tableID: {S: tableID},
-      timerSeq: {N: timerSeq.toString()},
+      [FIELDS.TIMERS.TABLE_ID]: {S: tableID},
+      [FIELDS.TIMERS.TIMER_SEQ]: {N: timerSeq.toString()},
     },
   }));
 }

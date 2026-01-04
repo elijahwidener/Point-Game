@@ -2,6 +2,7 @@ import {DeleteItemCommand, GetItemCommand, PutItemCommand, QueryCommand} from '@
 import {marshall, unmarshall} from '@aws-sdk/util-dynamodb';
 
 import {ddb} from './dynamo/client';
+import {FIELDS} from './dynamo/fields';
 import {TABLES} from './dynamo/tables';
 import {ConnectionStore} from './types';
 
@@ -10,8 +11,8 @@ export async function loadConnection(
   const result = await ddb.send(new GetItemCommand({
     TableName: TABLES.CONNECTION_STORE,
     Key: {
-      tableID: {S: tableID},
-      connectionID: {S: connectionID},
+      [FIELDS.CONNECTION_STORE.TABLE_ID]: {S: tableID},
+      [FIELDS.CONNECTION_STORE.CONNECTION_ID]: {S: connectionID},
     },
   }));
   if (!result.Item) {
@@ -20,11 +21,26 @@ export async function loadConnection(
   return unmarshall(result.Item) as ConnectionStore;
 }
 
+export async function loadConnectionByConnectionID(connectionID: string):
+    Promise<ConnectionStore|null> {
+  const result = await ddb.send(new QueryCommand({
+    TableName: TABLES.CONNECTION_STORE,
+    IndexName: 'ConnectionIDIndex',
+    KeyConditionExpression: `${FIELDS.CONNECTION_STORE.CONNECTION_ID} = :ID`,
+    ExpressionAttributeValues: {':ID': {S: connectionID}}
+  }));
+  if (!result.Items || result.Items.length === 0) {
+    return null;
+  }
+  return unmarshall(result.Items[0]) as ConnectionStore;
+}
+
+
 export async function loadTableConnections(tableID: string):
     Promise<ConnectionStore[]|null> {
   const result = await ddb.send(new QueryCommand({
     TableName: TABLES.CONNECTION_STORE,
-    KeyConditionExpression: 'tableID = :tableID',
+    KeyConditionExpression: `${FIELDS.CONNECTION_STORE.TABLE_ID} = :tableID`,
     ExpressionAttributeValues: {
       ':tableID': {S: tableID},
     },
@@ -44,8 +60,9 @@ export async function registerConnection(
   await ddb.send(new PutItemCommand({
     TableName: TABLES.CONNECTION_STORE,
     Item: marshall(item),
-    ConditionExpression:
-        'attribute_not_exists(tableID) AND attribute_not_exists(connectionID)'
+    ConditionExpression: `attribute_not_exists(${
+        FIELDS.CONNECTION_STORE.TABLE_ID}) AND attribute_not_exists(${
+        FIELDS.CONNECTION_STORE.CONNECTION_ID})`
   }));
 }
 
@@ -54,8 +71,8 @@ export async function removeConnection(
   await ddb.send(new DeleteItemCommand({
     TableName: TABLES.CONNECTION_STORE,
     Key: {
-      tableID: {S: tableID},
-      connectionID: {S: connectionID},
+      [FIELDS.CONNECTION_STORE.TABLE_ID]: {S: tableID},
+      [FIELDS.CONNECTION_STORE.CONNECTION_ID]: {S: connectionID},
     },
   }));
 }
