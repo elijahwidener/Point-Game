@@ -25,6 +25,20 @@ export function dealCards(deck: Card[], count: number): Card[] {
   return deck.splice(0, count);
 }
 
+export function dealUniqueCards(
+    deck: Card[], existingBoard: Card[], count: number): Card[] {
+  const dealt: Card[] = [];
+  while (dealt.length < count && deck.length > 0) {
+    const card = deck.pop()!;
+    // Check if this rank already exists on board
+    if (!existingBoard.some(bc => bc.rank === card.rank)) {
+      dealt.push(card);
+    }
+    // If duplicate, it "slides" off and we continue
+  }
+  return dealt;
+}
+
 export function findNextActiveSeat(
     state: GameState, startSeat: number): number {
   let seat = (startSeat + 1) % state.seats.length;

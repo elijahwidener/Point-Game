@@ -26,7 +26,7 @@ export function Header() {
             <img
               src="/transparent_point_game.png"
               alt="Point Game"
-              className="h-28 w-auto hover:opacity-90 transition-opacity"
+              className="h-24 w-auto hover:opacity-90 transition-opacity"
             />
           </Link>
 
@@ -48,13 +48,14 @@ export function Header() {
             {isAuthenticated && user ? (
               <>
                 <div className="hidden sm:flex items-center gap-4 px-5 py-2.5 bg-gray-800/50 rounded-lg border border-gray-700/50">
-                  <span className="text-amber-400 font-semibold text-base">
-                    ${user.balance.toLocaleString()}
-                  </span>
-                  <div className="w-px h-5 bg-gray-700"></div>
                   <span className="text-gray-300 text-base font-medium">
                     {user.username}
                   </span>
+                  <div className="w-px h-5 bg-gray-700"></div>
+                  <span className="text-amber-400 font-semibold text-base">
+                    ${user.balance.toLocaleString()}
+                  </span>
+                  
                 </div>
                 <button
                   onClick={logout}

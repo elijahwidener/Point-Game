@@ -2,7 +2,7 @@
 import {loadInterRoundActions, popInterRoundAction} from '../../../shared/persistence/interRoundActionQueue';
 import {GameState} from '../../../shared/persistence/types';
 
-import {collectRoundContributions, createShuffledDeck, dealCards, findNextActiveSeat, forceDiscards, postBlinds, resetActedFlags} from './helpers';
+import {collectRoundContributions, createShuffledDeck, dealCards, dealUniqueCards, findNextActiveSeat, forceDiscards, postBlinds, resetActedFlags} from './helpers';
 import {processInterRoundAction} from './interRoundActions';
 import {resolveShowdown} from './showdown';
 
@@ -83,7 +83,7 @@ export function transitionToFlop(state: GameState): GameState {
   state.street = 'Flop';
   collectRoundContributions(state);
 
-  const newCards = dealCards(state.deck, 2);
+  const newCards = dealUniqueCards(state.deck, state.boardCards, 2);
   state.boardCards.push(...newCards);
 
   forceDiscards(state);
@@ -99,7 +99,7 @@ export function transitionToTurn(state: GameState): GameState {
 
   const cardsToDeal = Math.min(2, state.deck.length);
   if (cardsToDeal > 0) {
-    const newCards = dealCards(state.deck, cardsToDeal);
+    const newCards = dealUniqueCards(state.deck, state.boardCards, cardsToDeal);
     state.boardCards.push(...newCards);
   }
 
@@ -116,7 +116,7 @@ export function transitionToRiver(state: GameState): GameState {
 
   const cardsToDeal = Math.min(1, state.deck.length);
   if (cardsToDeal > 0) {
-    const newCards = dealCards(state.deck, cardsToDeal);
+    const newCards = dealUniqueCards(state.deck, state.boardCards, cardsToDeal);
     state.boardCards.push(...newCards);
   }
 
