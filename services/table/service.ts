@@ -35,14 +35,15 @@ async function enqueueOrProcessInterRoundAction(
 }
 
 export async function createGameTable(
-    ownerID: string, config: TableConfig): Promise<string> {
+    ownerID: string, tableName: string, config: TableConfig): Promise<string> {
   const tableID = randomUUID();
-  await createTable(tableID, ownerID, config);
+  const finalConfig = {...config, maxPlayers: config.maxPlayers ?? 8};
+  await createTable(tableID, ownerID, tableName, finalConfig);
 
   const initialState: GameState = {
     tableID,
     handSeq: 0,
-    config,
+    config: finalConfig,
     seats: Array.from({length: 8}, (_, i) => ({
                                      seat: i,
                                      playerID: '',

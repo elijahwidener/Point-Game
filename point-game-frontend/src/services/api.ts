@@ -61,11 +61,12 @@ class ApiService {
     return response.json();
   }
 
-  async createTable(userID: string, config: TableConfig): Promise<string> {
+  async createTable(userID: string, tableName: string, config: TableConfig):
+      Promise<string> {
     const response = await fetch(`${this.baseURL}/tables`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({userID, config}),
+      body: JSON.stringify({userID, tableName, config}),
     });
 
     if (!response.ok) {

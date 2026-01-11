@@ -57,7 +57,9 @@ export interface ConnectionStore {
 export interface GameTable {
   tableID: string;
   ownerID: string;
+  name: string;
   status: GameTableStatus;
+  playerCount: number;
   config: TableConfig;
   interRoundActionSeq: number;
   createdAt: number;
@@ -73,6 +75,7 @@ export interface TableConfig {
   ante: number;
   smallBlind: number;
   bigBlind: number;
+  maxPlayers: number;
 }
 
 export interface Timer {

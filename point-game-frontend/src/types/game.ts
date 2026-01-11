@@ -37,12 +37,15 @@ export interface TableConfig {
   ante: number;
   smallBlind: number;
   bigBlind: number;
+  maxPlayers: number;
 }
 
 export interface GameTable {
   tableID: string;
   ownerID: string;
+  name: string;
   status: 'Waiting'|'Running'|'Paused'|'Ended';
+  playerCount: number;
   config: TableConfig;
   createdAt: number;
 }

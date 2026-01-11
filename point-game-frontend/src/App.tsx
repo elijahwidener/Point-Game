@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route} from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { HomePage } from './pages/HomePage';
 import { AboutPage } from './pages/AboutPage';
@@ -6,15 +6,23 @@ import { LobbyPage } from './pages/LobbyPage';
 import { TablePage } from './pages/TablePage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
 import { useAuthStore } from './stores/authStore';
-import { ROUTES } from './utils/constants';
 import { LoginModal } from './components/modals/LoginModal';
 import { SignupModal } from './components/modals/SignupModal';
+import { useUIStore } from "./stores/uiStore";
+
+
+
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const openLoginModal = useUIStore((state) => state.openLoginModal);
+
+    if (!isAuthenticated) {
+      openLoginModal();
+    }
   
   if (!isAuthenticated) {
-    return <Navigate to={ROUTES.HOME} replace />;
+    return null;
   }
   
   return <>{children}</>;

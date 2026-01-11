@@ -1,4 +1,5 @@
 import {ConflictError, NotFoundError, UnauthorizedError} from '../../../shared/errors';
+import {updatePlayerCount} from '../../../shared/persistence/gameTable';
 import {GameState, InterRoundAction, InterRoundActions, TableConfig} from '../../../shared/persistence/types';
 import {applyBalanceDelta} from '../../user/service';
 
@@ -24,8 +25,10 @@ export async function processInterRoundAction(
         await processLeave(state, action);
         break;
       case InterRoundActions.STAND_UP:
+        processStandUp(state, action);
         break;
       case InterRoundActions.SIT_DOWN:
+        processSitDown(state, action);
         break;
       case InterRoundActions.CONFIG_UPDATE:
         await processConfigUpdate(state, action);
@@ -53,8 +56,8 @@ async function processJoin(
   }
 
   const emptySeatIndex = state.seats.findIndex(s => !s.active);
-  if (emptySeatIndex === -1) {
-    throw new ConflictError('Table is full');
+  if (emptySeatIndex === -1 || emptySeatIndex >= state.config.maxPlayers) {
+    throw new ConflictError('Table Full');
   }
 
   try {
@@ -72,6 +75,8 @@ async function processJoin(
   seat.acted = false;
   seat.active = true;
   seat.declaration = undefined;
+
+  await updatePlayerCount(state.tableID, 1);
 
   console.log(`Player ${userID} joined table ${state.tableID} at seat ${
       emptySeatIndex} with ${buyIn} chips`);
@@ -103,6 +108,8 @@ async function processLeave(
   seat.acted = false;
   seat.active = false;
   seat.declaration = undefined;
+
+  await updatePlayerCount(state.tableID, -1);
 
   console.log(`Player ${userID} left table ${state.tableID}, cashed out ${
       seat.stack} chips`);

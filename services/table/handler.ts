@@ -28,18 +28,17 @@ function error(statusCode: number, message: string): APIGatewayProxyResult {
 export async function handler(event: APIGatewayProxyEvent):
     Promise<APIGatewayProxyResult> {
   try {
-    const route =
-        `${event.httpMethod} ${event.resource}`;  // ✅ Use resource, not path
+    const route = `${event.httpMethod} ${event.resource}`;
 
     switch (route) {
       case 'POST /tables': {
         if (!event.body) throw new Error('Invalid');
 
-        const {userID, config} = JSON.parse(event.body);
-        if (!userID || !config) {
+        const {userID, tableName, config} = JSON.parse(event.body);
+        if (!userID || !config || !tableName) {
           throw new Error('Invalid');
         }
-        const tableID = await createGameTable(userID, config);
+        const tableID = await createGameTable(userID, tableName, config);
 
         return success(201, tableID);
       }
