@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
-import { big } from 'framer-motion/client';
-import { TableConfig } from 'lucide-react';
 
 interface CreateTableModalProps {
     isOpen: boolean;
