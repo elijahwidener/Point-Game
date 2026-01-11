@@ -37,13 +37,14 @@ async function enqueueOrProcessInterRoundAction(table, type, userID, payload) {
         await (0, gameTable_1.updateCurrentInterroundActionSeq)(table.tableID, table.interRoundActionSeq, table.interRoundActionSeq + 1);
     }
 }
-async function createGameTable(ownerID, config) {
+async function createGameTable(ownerID, tableName, config) {
     const tableID = (0, crypto_1.randomUUID)();
-    await (0, gameTable_1.createTable)(tableID, ownerID, config);
+    const finalConfig = { ...config, maxPlayers: config.maxPlayers ?? 8 };
+    await (0, gameTable_1.createTable)(tableID, ownerID, tableName, finalConfig);
     const initialState = {
         tableID,
         handSeq: 0,
-        config,
+        config: finalConfig,
         seats: Array.from({ length: 8 }, (_, i) => ({
             seat: i,
             playerID: '',

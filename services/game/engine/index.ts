@@ -23,7 +23,8 @@ export async function processPlayerAction(
   validateAction(state, playerID, action, payload);
 
   let newState = applyPlayerAction(state, playerID, action, payload);
-  newState.gameSeq = await updateGameState(tableID, newState, state.gameSeq);
+  const newGameSeq = await updateGameState(tableID, newState, state.gameSeq);
+  newState.gameSeq = newGameSeq;
 
   await writeAction({
     handID: `${tableID}#${state.handSeq || 0}`,
@@ -34,7 +35,7 @@ export async function processPlayerAction(
     timestamp: Date.now()
   });
 
-  await broadcastAction(tableID, {playerID, action, payload});
+  await broadcastAction(tableID, {playerID, action, payload}, newGameSeq);
 
   if (isActionClosed(newState)) {
     await advanceGameState(tableID, newState);

@@ -36,7 +36,7 @@ async function updateGameState(tableID, mutatedState, expectedGameSeq, timerSeq)
     };
     await client_1.ddb.send(new client_dynamodb_1.PutItemCommand({
         TableName: tables_1.TABLES.GAME_STATE,
-        Item: (0, util_dynamodb_1.marshall)(nextState),
+        Item: (0, util_dynamodb_1.marshall)(nextState, { removeUndefinedValues: true }),
         ConditionExpression: `${fields_1.FIELDS.GAME_STATE.GAME_SEQ} = :expectedSeq`,
         ExpressionAttributeValues: {
             ':expectedSeq': { N: expectedGameSeq.toString() },

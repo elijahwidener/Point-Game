@@ -75,7 +75,7 @@ function transitionToPreflop(state) {
 function transitionToFlop(state) {
     state.street = 'Flop';
     (0, helpers_1.collectRoundContributions)(state);
-    const newCards = (0, helpers_1.dealCards)(state.deck, 2);
+    const newCards = (0, helpers_1.dealUniqueCards)(state.deck, state.boardCards, 2);
     state.boardCards.push(...newCards);
     (0, helpers_1.forceDiscards)(state);
     (0, helpers_1.resetActedFlags)(state);
@@ -87,7 +87,7 @@ function transitionToTurn(state) {
     (0, helpers_1.collectRoundContributions)(state);
     const cardsToDeal = Math.min(2, state.deck.length);
     if (cardsToDeal > 0) {
-        const newCards = (0, helpers_1.dealCards)(state.deck, cardsToDeal);
+        const newCards = (0, helpers_1.dealUniqueCards)(state.deck, state.boardCards, cardsToDeal);
         state.boardCards.push(...newCards);
     }
     (0, helpers_1.forceDiscards)(state);
@@ -100,7 +100,7 @@ function transitionToRiver(state) {
     (0, helpers_1.collectRoundContributions)(state);
     const cardsToDeal = Math.min(1, state.deck.length);
     if (cardsToDeal > 0) {
-        const newCards = (0, helpers_1.dealCards)(state.deck, cardsToDeal);
+        const newCards = (0, helpers_1.dealUniqueCards)(state.deck, state.boardCards, cardsToDeal);
         state.boardCards.push(...newCards);
     }
     (0, helpers_1.forceDiscards)(state);

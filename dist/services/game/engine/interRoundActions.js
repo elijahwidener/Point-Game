@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.processInterRoundAction = processInterRoundAction;
 const errors_1 = require("../../../shared/errors");
+const gameTable_1 = require("../../../shared/persistence/gameTable");
 const types_1 = require("../../../shared/persistence/types");
 const service_1 = require("../../user/service");
 const index_1 = require("././index");
@@ -22,8 +23,10 @@ async function processInterRoundAction(state, action) {
                 await processLeave(state, action);
                 break;
             case types_1.InterRoundActions.STAND_UP:
+                processStandUp(state, action);
                 break;
             case types_1.InterRoundActions.SIT_DOWN:
+                processSitDown(state, action);
                 break;
             case types_1.InterRoundActions.CONFIG_UPDATE:
                 await processConfigUpdate(state, action);
@@ -46,8 +49,8 @@ async function processJoin(state, action) {
         throw new errors_1.ConflictError('Player already seated');
     }
     const emptySeatIndex = state.seats.findIndex(s => !s.active);
-    if (emptySeatIndex === -1) {
-        throw new errors_1.ConflictError('Table is full');
+    if (emptySeatIndex === -1 || emptySeatIndex >= state.config.maxPlayers) {
+        throw new errors_1.ConflictError('Table Full');
     }
     try {
         await (0, service_1.applyBalanceDelta)(userID, -buyIn);
@@ -64,6 +67,7 @@ async function processJoin(state, action) {
     seat.acted = false;
     seat.active = true;
     seat.declaration = undefined;
+    await (0, gameTable_1.updatePlayerCount)(state.tableID, 1);
     console.log(`Player ${userID} joined table ${state.tableID} at seat ${emptySeatIndex} with ${buyIn} chips`);
 }
 async function processLeave(state, action) {
@@ -89,6 +93,7 @@ async function processLeave(state, action) {
     seat.acted = false;
     seat.active = false;
     seat.declaration = undefined;
+    await (0, gameTable_1.updatePlayerCount)(state.tableID, -1);
     console.log(`Player ${userID} left table ${state.tableID}, cashed out ${seat.stack} chips`);
 }
 async function processStandUp(state, action) {

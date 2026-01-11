@@ -9,9 +9,10 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "type": "commonjs",
   "dependencies": {
-    "@aws-sdk/client-apigatewaymanagementapi": "^3.962.0",
-    "@aws-sdk/client-dynamodb": "^3.962.0",
-    "@aws-sdk/util-dynamodb": "^3.962.0"
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.966.0",
+    "@aws-sdk/client-dynamodb": "^3.966.0",
+    "@aws-sdk/util-dynamodb": "^3.966.0"
   }
 }

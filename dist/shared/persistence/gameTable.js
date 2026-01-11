@@ -6,6 +6,7 @@ exports.updateTableStatus = updateTableStatus;
 exports.updateTableConfig = updateTableConfig;
 exports.updateCurrentInterroundActionSeq = updateCurrentInterroundActionSeq;
 exports.createTable = createTable;
+exports.updatePlayerCount = updatePlayerCount;
 const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
 const util_dynamodb_1 = require("@aws-sdk/util-dynamodb");
 const client_1 = require("./dynamo/client");
@@ -85,11 +86,13 @@ async function updateCurrentInterroundActionSeq(tableID, expectedSeq, nextSeq) {
         },
     }));
 }
-async function createTable(tableID, ownerID, config) {
+async function createTable(tableID, ownerID, tableName, config) {
     const table = {
         tableID,
         ownerID,
+        name: tableName,
         status: 'Waiting',
+        playerCount: 0,
         config,
         interRoundActionSeq: 0,
         createdAt: Date.now(),
@@ -100,4 +103,16 @@ async function createTable(tableID, ownerID, config) {
         ConditionExpression: `attribute_not_exists(${fields_1.FIELDS.GAME_TABLES.TABLE_ID})`,
     }));
     return tableID;
+}
+async function updatePlayerCount(tableID, delta) {
+    await client_1.ddb.send(new client_dynamodb_1.UpdateItemCommand({
+        TableName: tables_1.TABLES.GAME_TABLES,
+        Key: {
+            [fields_1.FIELDS.GAME_TABLES.TABLE_ID]: { S: tableID },
+        },
+        UpdateExpression: `SET ${fields_1.FIELDS.GAME_TABLES.PLAYER_COUNT} = ${fields_1.FIELDS.GAME_TABLES.PLAYER_COUNT} + :delta`,
+        ExpressionAttributeValues: {
+            ':delta': { N: delta.toString() },
+        },
+    }));
 }

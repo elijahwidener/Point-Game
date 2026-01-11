@@ -20,7 +20,8 @@ async function processPlayerAction(tableID, playerID, action, payload) {
         throw new errors_1.NotFoundError('Game state not found');
     (0, validation_1.validateAction)(state, playerID, action, payload);
     let newState = (0, actions_1.applyPlayerAction)(state, playerID, action, payload);
-    newState.gameSeq = await (0, gameState_1.updateGameState)(tableID, newState, state.gameSeq);
+    const newGameSeq = await (0, gameState_1.updateGameState)(tableID, newState, state.gameSeq);
+    newState.gameSeq = newGameSeq;
     await (0, actionLog_1.writeAction)({
         handID: `${tableID}#${state.handSeq || 0}`,
         actionID: newState.gameSeq,
@@ -29,7 +30,7 @@ async function processPlayerAction(tableID, playerID, action, payload) {
         payload,
         timestamp: Date.now()
     });
-    await (0, broadcaster_1.broadcastAction)(tableID, { playerID, action, payload });
+    await (0, broadcaster_1.broadcastAction)(tableID, { playerID, action, payload }, newGameSeq);
     if ((0, actions_1.isActionClosed)(newState)) {
         await advanceGameState(tableID, newState);
     }

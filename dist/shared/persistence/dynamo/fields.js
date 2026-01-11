@@ -13,7 +13,9 @@ exports.FIELDS = {
     GAME_TABLES: {
         TABLE_ID: 'tableID',
         OWNER_ID: 'ownerID',
+        NAME: 'name',
         STATUS: 'status',
+        PLAYER_COUNT: 'playerCount',
         CONFIG: 'config',
         INTER_ROUND_ACTION_SEQ: 'interRoundActionSeq',
         CREATED_AT: 'createdAt',
@@ -91,6 +93,7 @@ exports.FIELDS = {
         ANTE: 'ante',
         SMALL_BLIND: 'smallBlind',
         BIG_BLIND: 'bigBlind',
+        MAX_PLAYERS: 'maxPlayers'
     },
     CARD: {
         RANK: 'rank',

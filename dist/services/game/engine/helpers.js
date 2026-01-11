@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createShuffledDeck = createShuffledDeck;
 exports.dealCards = dealCards;
+exports.dealUniqueCards = dealUniqueCards;
 exports.findNextActiveSeat = findNextActiveSeat;
 exports.postBlinds = postBlinds;
 exports.collectRoundContributions = collectRoundContributions;
@@ -25,6 +26,18 @@ function createShuffledDeck() {
 }
 function dealCards(deck, count) {
     return deck.splice(0, count);
+}
+function dealUniqueCards(deck, existingBoard, count) {
+    const dealt = [];
+    while (dealt.length < count && deck.length > 0) {
+        const card = deck.pop();
+        // Check if this rank already exists on board
+        if (!existingBoard.some(bc => bc.rank === card.rank)) {
+            dealt.push(card);
+        }
+        // If duplicate, it "slides" off and we continue
+    }
+    return dealt;
 }
 function findNextActiveSeat(state, startSeat) {
     let seat = (startSeat + 1) % state.seats.length;
