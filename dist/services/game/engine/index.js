@@ -24,14 +24,19 @@ async function processPlayerAction(tableID, playerID, action, payload) {
     newState.gameSeq = newGameSeq;
     await (0, actionLog_1.writeAction)({
         handID: `${tableID}#${state.handSeq || 0}`,
-        actionID: newState.gameSeq,
+        actionSeq: newState.gameSeq,
         playerID,
         action,
         payload,
         timestamp: Date.now()
     });
-    await (0, broadcaster_1.broadcastAction)(tableID, { playerID, action, payload }, newGameSeq);
-    if ((0, actions_1.isActionClosed)(newState)) {
+    // await broadcastAction(tableID, {playerID, action, payload}, newGameSeq);
+    console.log(`Action applied. Broadcasting state...`);
+    await (0, broadcaster_1.broadcastState)(tableID);
+    const closed = (0, actions_1.isActionClosed)(newState);
+    console.log(`isActionClosed: ${closed}, street: ${newState.street}`);
+    if (closed) {
+        console.log(`Advancing game state...`);
         await advanceGameState(tableID, newState);
     }
     // new turn timer (dont code this yet)

@@ -6,6 +6,14 @@ exports.isActionClosed = isActionClosed;
 function applyPlayerAction(state, playerID, action, payload) {
     // Deep clone state to avoid mutations
     const newState = JSON.parse(JSON.stringify(state));
+    // For declare, find seat by playerID (not currentPlayerSeat)
+    if (action === 'declare') {
+        const declaringSeat = newState.seats.find(s => s.playerID === playerID);
+        if (declaringSeat) {
+            applyDeclare(newState, declaringSeat, payload.declaration);
+        }
+        return newState;
+    }
     const seatIndex = newState.currentPlayerSeat;
     const seat = newState.seats[seatIndex];
     switch (action) {
@@ -18,16 +26,11 @@ function applyPlayerAction(state, playerID, action, payload) {
         case 'raise':
             applyRaise(newState, seat, payload.amount);
             break;
-        case 'declare':
-            applyDeclare(newState, seat, payload.declaration);
-            break;
         case 'fold':
             applyFold(newState, seat);
             break;
     }
-    if (action !== 'declare') {
-        advanceToNextPlayer(newState);
-    }
+    advanceToNextPlayer(newState);
     return newState;
 }
 function applyCheck(state, seat) {
@@ -85,7 +88,12 @@ function advanceToNextPlayer(state) {
     // true
 }
 function isActionClosed(state) {
-    // If not in betting street, action is closed
+    // Check declare separately
+    if (state.street === 'Declare') {
+        const playersWhoMustDeclare = state.seats.filter(seat => seat.active && !seat.folded);
+        return playersWhoMustDeclare.every(seat => seat.acted);
+    }
+    // If not in betting street or declare, action is closed
     const bettingStreets = ['Preflop', 'Flop', 'Turn', 'River'];
     if (!bettingStreets.includes(state.street)) {
         return true;

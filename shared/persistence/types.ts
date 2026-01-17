@@ -41,7 +41,7 @@ export interface Pot {
 
 export interface ActionLog {
   handID: string;
-  actionID: number;
+  actionSeq: number;
   playerID: string;
   action: string;
   payload: any[];

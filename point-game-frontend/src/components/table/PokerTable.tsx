@@ -36,6 +36,7 @@ export function PokerTable({ gameState, myUserID, onSeatClick, isSeated = false 
       return Array.from({ length: 8 }, (_, i) => ({
         seat: i,
         playerID: '',
+        username: '',
         stack: 0,
         bet: 0,
         holeCards: null,

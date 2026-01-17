@@ -10,6 +10,12 @@ export async function transitionToStreet(state: GameState): Promise<GameState> {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   const currentStreet = newState.street;
 
+  const skipCheckStreets = ['Showdown', 'Interround'];
+  if (!skipCheckStreets.includes(currentStreet) &&
+      isSinglePlayerRemaining(newState)) {
+    return await awardPotToLastPlayer(newState);
+  }
+
   switch (currentStreet) {
     case 'Preflop':
       return transitionToFlop(newState);
@@ -28,6 +34,36 @@ export async function transitionToStreet(state: GameState): Promise<GameState> {
     default:
       throw new Error(`Unknown street: ${currentStreet}`);
   }
+}
+
+function isSinglePlayerRemaining(state: GameState): boolean {
+  const activePlayers = state.seats.filter(s => s.active && !s.folded);
+  return activePlayers.length === 1;
+}
+
+
+async function awardPotToLastPlayer(state: GameState): Promise<GameState> {
+  // First collect any outstanding bets into the pot
+  collectRoundContributions(state);
+
+  const winner = state.seats.find(s => s.active && !s.folded);
+  if (!winner) {
+    console.error('No winner found in awardPotToLastPlayer');
+    return state;
+  }
+
+  let totalWon = 0;
+  for (const pot of state.pots) {
+    totalWon += pot.amount;
+    pot.amount = 0;
+  }
+  winner.stack += totalWon;
+
+  console.log(`Seat ${winner.seat} (${winner.playerID}) wins ${
+      totalWon} chips (everyone else folded)`);
+
+  // Hand is over
+  return await transitionToInterround(state);
 }
 
 
@@ -53,7 +89,7 @@ export function transitionToPreflop(state: GameState): GameState {
 
   const activePlayers = state.seats.filter(s => s.active && s.stack >= ante);
 
-  if (activePlayers.length <= 3) {
+  if (activePlayers.length < 3) {
     state.street = 'Interround';
     return state;
   }

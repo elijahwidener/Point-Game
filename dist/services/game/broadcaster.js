@@ -16,7 +16,8 @@ async function broadcastState(tableID) {
         return;
     await Promise.allSettled(connections.map(conn => {
         const filteredState = (0, privacyFilter_1.applyPrivacyFiltering)(state, conn.playerID);
-        return postToConnection(tableID, conn.connectionID, filteredState);
+        const message = { type: 'state', payload: filteredState };
+        return postToConnection(tableID, conn.connectionID, message);
     }));
 }
 async function broadcastAction(tableID, action, gameSeq) {

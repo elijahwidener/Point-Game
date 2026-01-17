@@ -70,7 +70,8 @@ async function handleResync(
   }
 
   const displayState = applyPrivacyFiltering(state, conn.playerID);
-  await sendToConnection(tableID, connectionID, displayState);
+  await sendToConnection(
+      tableID, connectionID, {type: 'state', payload: displayState});
 
   console.log(`Resync sent to ${connectionID} for table ${tableID}`);
 }

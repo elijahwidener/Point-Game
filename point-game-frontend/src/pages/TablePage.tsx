@@ -94,7 +94,7 @@ export function TablePage() {
   const isMyTurn = gameState?.seats[gameState.currentPlayerSeat]?.playerID === user?.userID;
   const isOwner = tableData?.ownerID === user?.userID;
   const isSittingOut = mySeat ? !mySeat.active : false;
-  const needsToDecalre = gameState?.street === 'Declare' && isMyTurn && !mySeat?.declaration;
+  const needsToDeclare = gameState?.street === 'Declare' && !mySeat?.declaration && !mySeat?.folded;
 
 
   // Calculate betting values
@@ -404,7 +404,7 @@ export function TablePage() {
 
       {/* Declaration Modal */}
       <DeclarationModal
-        isOpen={needsToDecalre}
+        isOpen={needsToDeclare}
         onDeclare={handleDeclare}
         isLoading={isLoading}
       />

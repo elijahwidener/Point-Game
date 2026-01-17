@@ -56,7 +56,7 @@ export const FIELDS = {
 
   ACTION_LOG: {
     HAND_ID: 'handID',
-    ACTION_ID: 'actionID',
+    ACTION_SEQ: 'actionSeq',
     PLAYER_ID: 'playerID',
     ACTION: 'action',
     PAYLOAD: 'payload',

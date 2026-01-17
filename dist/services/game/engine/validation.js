@@ -3,9 +3,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.validateAction = validateAction;
 const errors_1 = require("../../../shared/errors");
 function validateAction(state, playerID, action, payload) {
+    if (state.street === 'Declare') {
+        if (action !== 'declare') {
+            throw new errors_1.BadRequestError('Can only declare during Declare phase');
+        }
+        validateDeclare(state, playerID, payload);
+        return;
+    }
     // 1. Check game can accept player actions
-    const bettinStreets = ['Preflop', 'Flop', 'Turn', 'River'];
-    if (!bettinStreets.includes(state.street))
+    const bettingStreets = ['Preflop', 'Flop', 'Turn', 'River'];
+    if (!bettingStreets.includes(state.street))
         throw new errors_1.ConflictError('Cannot preform actions during ${state.street}');
     // 2. Check if its the players turn
     const currentSeat = state.seats[state.currentPlayerSeat];
@@ -30,6 +37,23 @@ function validateAction(state, playerID, action, payload) {
             break;
         default:
             throw new errors_1.BadRequestError(`Unknown action: ${action}`);
+    }
+}
+function validateDeclare(state, playerID, payload) {
+    const seat = state.seats.find(s => s.playerID === playerID);
+    if (!seat) {
+        throw new errors_1.ConflictError('Player not found at table');
+    }
+    if (!seat.active || seat.folded) {
+        throw new errors_1.ConflictError('Player is not active');
+    }
+    if (seat.declaration) {
+        throw new errors_1.ConflictError('Already declared');
+    }
+    const validDeclarations = ['high', 'low', 'both'];
+    if (!payload?.declaration ||
+        !validDeclarations.includes(payload.declaration)) {
+        throw new errors_1.BadRequestError('Invalid declaration - must be high, low, or both');
     }
 }
 function validateCheck(state, seat) {

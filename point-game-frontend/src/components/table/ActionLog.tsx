@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { History, ChevronDown, ChevronUp, X, Check, TrendingUp, Flag, Eye } from 'lucide-react';
+import { useCallback } from 'react';
 
 export interface ActionLogEntry {
   id: string;
@@ -140,18 +141,18 @@ export function ActionLog({ entries, maxVisible = 5 }: ActionLogProps) {
 export function useActionLog() {
   const [entries, setEntries] = useState<ActionLogEntry[]>([]);
 
-  const addEntry = (entry: Omit<ActionLogEntry, 'id' | 'timestamp'>) => {
+  const addEntry = useCallback((entry: Omit<ActionLogEntry, 'id' | 'timestamp'>) => {
     const newEntry: ActionLogEntry = {
       ...entry,
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
     };
     setEntries((prev) => [...prev, newEntry]);
-  };
+  }, []);
 
-  const clearLog = () => {
+  const clearLog = useCallback(() => {
     setEntries([]);
-  };
+  }, []);
 
   return { entries, addEntry, clearLog };
 }

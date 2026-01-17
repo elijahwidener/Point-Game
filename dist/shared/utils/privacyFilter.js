@@ -10,5 +10,5 @@ function applyPrivacyFiltering(state, playerID) {
         }
         return seat;
     });
-    return { type: 'state', payload: filtered };
+    return filtered;
 }

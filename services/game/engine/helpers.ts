@@ -31,7 +31,9 @@ export function dealUniqueCards(
   while (dealt.length < count && deck.length > 0) {
     const card = deck.pop()!;
     // Check if this rank already exists on board
-    if (!existingBoard.some(bc => bc.rank === card.rank)) {
+    const isDuplicate = existingBoard.some(bc => bc.rank === card.rank) ||
+        dealt.some(dc => dc.rank === card.rank);
+    if (!isDuplicate) {
       dealt.push(card);
     }
     // If duplicate, it "slides" off and we continue

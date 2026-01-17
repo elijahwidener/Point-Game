@@ -10,5 +10,5 @@ export function applyPrivacyFiltering(state: GameState, playerID: string): any {
     }
     return seat;
   });
-  return {type: 'state', payload: filtered};
+  return filtered;
 }

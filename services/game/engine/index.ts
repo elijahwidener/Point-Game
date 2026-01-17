@@ -1,3 +1,5 @@
+import {log} from 'console';
+
 import {ConflictError, NotFoundError} from '../../../shared/errors';
 import {writeAction} from '../../../shared/persistence/actionLog';
 import {loadGameState, updateGameState} from '../../../shared/persistence/gameState';
@@ -28,16 +30,23 @@ export async function processPlayerAction(
 
   await writeAction({
     handID: `${tableID}#${state.handSeq || 0}`,
-    actionID: newState.gameSeq,
+    actionSeq: newState.gameSeq,
     playerID,
     action,
     payload,
     timestamp: Date.now()
   });
 
-  await broadcastAction(tableID, {playerID, action, payload}, newGameSeq);
+  // await broadcastAction(tableID, {playerID, action, payload}, newGameSeq);
+  console.log(`Action applied. Broadcasting state...`);
 
-  if (isActionClosed(newState)) {
+  await broadcastState(tableID);
+
+  const closed = isActionClosed(newState);
+  console.log(`isActionClosed: ${closed}, street: ${newState.street}`);
+
+  if (closed) {
+    console.log(`Advancing game state...`);
     await advanceGameState(tableID, newState);
   }
   // new turn timer (dont code this yet)

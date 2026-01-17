@@ -6,6 +6,7 @@ import type {ConnectionStatus} from '../services/websocket';
 export interface DisplaySeat {
   seat: number;
   playerID: string;
+  username: string;
   stack: number;
   bet: number;
   holeCards: any[]|null;
