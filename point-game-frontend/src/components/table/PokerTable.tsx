@@ -100,7 +100,7 @@ export function PokerTable({ gameState, myUserID, onSeatClick, isSeated = false 
         return (
           <div
             key={index}
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 w-36"
+            className="absolute transform -translate-x-1/2 -translate-y-2/3 w-32"
             style={{
               left: `${position.x}%`,
               top: `${position.y}%`,

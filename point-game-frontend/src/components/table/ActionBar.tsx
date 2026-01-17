@@ -69,7 +69,7 @@ export function ActionBar({
   ].filter(p => p.value <= maxRaise && p.value >= effectiveMinRaise);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-slate-950 via-slate-900/98 to-transparent pt-8 pb-6 px-4">
+    <div className="fixed bottom-6 left-100 right-0 pt-8 pb-6 px-4 z-30">
       <div className="max-w-3xl mx-auto">
         {/* Raise slider panel */}
         {showRaiseSlider && (

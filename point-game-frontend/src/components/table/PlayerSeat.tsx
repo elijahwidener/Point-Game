@@ -68,18 +68,19 @@ export function PlayerSeat({
 
       {/* Player avatar and name */}
       <div className="flex items-center gap-2 mb-2">
-        <div
+        {/* This can be used later for a profile pic area or something */}
+        {/* <div
           className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
             isMe
               ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white'
               : 'bg-gradient-to-br from-slate-600 to-slate-700 text-slate-300'
           }`}
         >
-          {seat.playerID ? seat.playerID.slice(0, 2).toUpperCase() : '?'}
-        </div>
+          {seat.username ? seat.username.slice(0, 2).toUpperCase() : '?'}
+        </div> */}
         <div className="flex flex-col">
           <span className={`text-sm font-medium truncate max-w-[80px] ${isMe ? 'text-cyan-400' : 'text-slate-200'}`}>
-            {isMe ? 'You' : (seat.playerID?.slice(0, 8) || 'Player')}
+            {isMe ? 'You' : (seat.username?.slice(0, 8) || 'Player')}
           </span>
           {seat.folded && (
             <span className="text-[10px] text-red-400 font-medium">FOLDED</span>

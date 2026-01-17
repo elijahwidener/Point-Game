@@ -13,7 +13,7 @@ function validateAction(state, playerID, action, payload) {
     // 1. Check game can accept player actions
     const bettingStreets = ['Preflop', 'Flop', 'Turn', 'River'];
     if (!bettingStreets.includes(state.street))
-        throw new errors_1.ConflictError('Cannot preform actions during ${state.street}');
+        throw new errors_1.ConflictError(`Cannot preform actions during ${state.street}`);
     // 2. Check if its the players turn
     const currentSeat = state.seats[state.currentPlayerSeat];
     if (!currentSeat || currentSeat.playerID !== playerID)

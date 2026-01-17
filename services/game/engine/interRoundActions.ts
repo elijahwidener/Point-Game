@@ -40,7 +40,10 @@ export async function processInterRoundAction(
 
 async function processJoin(
     state: GameState, action: InterRoundAction): Promise<void> {
-  const buyIn = action.payload as unknown as number;
+  const {buyIn, username} = action.payload as unknown as {
+    buyIn: number;
+    username: string
+  };
   const userID = action.userID;
 
   if (!buyIn || buyIn <= 0) {
@@ -65,6 +68,7 @@ async function processJoin(
 
   const seat = state.seats[emptySeatIndex];
   seat.playerID = userID;
+  seat.username = username;
   seat.stack = buyIn;
   seat.bet = 0;
   seat.holeCards = [];

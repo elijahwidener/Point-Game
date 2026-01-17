@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/authStore';
 import { api } from '../services/api';
 import type { GameTable } from '../types/game';
 import { DeclarationModal } from '../components/modals/DeclarationModal';
+import { DraggableCardDisplay } from '../components/table/DraggableCardDisplay';
 
 import {
   PokerTable,
@@ -332,43 +333,10 @@ export function TablePage() {
 
         {/* My cards display - positioned in bottom right when seated */}
         {mySeat && mySeat.holeCards && mySeat.holeCards.length > 0 && (
-          <div className="fixed bottom-24 right-4 bg-slate-900/90 backdrop-blur-sm border border-slate-700 rounded-xl p-4 z-10">
-            <div className="text-xs text-slate-400 mb-2 font-medium">Your Cards</div>
-            <div className="flex gap-2">
-              {mySeat.holeCards.map((card, i) => (
-                <div
-                  key={i}
-                  className="w-14 h-20 rounded-lg bg-white flex flex-col justify-between p-1.5 shadow-lg"
-                >
-                  <span
-                    className="text-sm font-bold"
-                    style={{
-                      color: ['Hearts', 'Diamonds', 'hearts', 'diamonds', 'h', 'd'].includes(card.suit)
-                        ? '#ef4444'
-                        : '#1e293b',
-                    }}
-                  >
-                    {card.rank}
-                  </span>
-                  <span
-                    className="text-2xl text-center"
-                    style={{
-                      color: ['Hearts', 'Diamonds', 'hearts', 'diamonds', 'h', 'd'].includes(card.suit)
-                        ? '#ef4444'
-                        : '#1e293b',
-                    }}
-                  >
-                    {card.suit === 'Hearts' || card.suit === 'hearts' || card.suit === 'h' ? '♥' :
-                     card.suit === 'Diamonds' || card.suit === 'diamonds' || card.suit === 'd' ? '♦' :
-                     card.suit === 'Clubs' || card.suit === 'clubs' || card.suit === 'c' ? '♣' : '♠'}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-2 text-center">
-              <span className="text-sm font-bold text-amber-400">${mySeat.stack}</span>
-            </div>
-          </div>
+          <DraggableCardDisplay
+            cards={mySeat.holeCards}
+            stack={mySeat.stack}
+          />
         )}
       </main>
 

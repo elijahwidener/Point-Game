@@ -23,7 +23,8 @@ export function SignupModal(){
                 setError("Passwords do not match");
                 return;
             }  
-            const { userID } = await api.signup(username, password);
+            await api.signup(username, password);
+            const { userID } = await api.login(username, password);
             const user = await api.getMe(userID);
             setUser(user);
             closeSignupModal();

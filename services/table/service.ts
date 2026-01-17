@@ -47,6 +47,7 @@ export async function createGameTable(
     seats: Array.from({length: 8}, (_, i) => ({
                                      seat: i,
                                      playerID: '',
+                                     username: '',
                                      stack: 0,
                                      bet: 0,
                                      holeCards: [],
@@ -94,7 +95,7 @@ export async function takeSeat(
   if (table.status === 'Ended') throw new ConflictError('Table has ended');
 
   await enqueueOrProcessInterRoundAction(
-      table, InterRoundActions.JOIN, userID, buyIn);
+      table, InterRoundActions.JOIN, userID, {buyIn, username: user.username});
 }
 
 export async function leaveSeat(

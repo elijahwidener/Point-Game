@@ -36,7 +36,7 @@ async function processInterRoundAction(state, action) {
     }
 }
 async function processJoin(state, action) {
-    const buyIn = action.payload;
+    const { buyIn, username } = action.payload;
     const userID = action.userID;
     if (!buyIn || buyIn <= 0) {
         throw new errors_1.ConflictError('Invalid buy-in amount');
@@ -57,6 +57,7 @@ async function processJoin(state, action) {
     }
     const seat = state.seats[emptySeatIndex];
     seat.playerID = userID;
+    seat.username = username;
     seat.stack = buyIn;
     seat.bet = 0;
     seat.holeCards = [];

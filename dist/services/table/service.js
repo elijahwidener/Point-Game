@@ -50,6 +50,7 @@ async function createGameTable(ownerID, tableName, config) {
         seats: Array.from({ length: 8 }, (_, i) => ({
             seat: i,
             playerID: '',
+            username: '',
             stack: 0,
             bet: 0,
             holeCards: [],
@@ -92,7 +93,7 @@ async function takeSeat(tableID, userID, buyIn) {
         throw new errors_1.NotFoundError('Table not found');
     if (table.status === 'Ended')
         throw new errors_1.ConflictError('Table has ended');
-    await enqueueOrProcessInterRoundAction(table, types_1.InterRoundActions.JOIN, userID, buyIn);
+    await enqueueOrProcessInterRoundAction(table, types_1.InterRoundActions.JOIN, userID, { buyIn, username: user.username });
 }
 async function leaveSeat(tableID, userID) {
     const table = await (0, gameTable_1.loadGameTable)(tableID);

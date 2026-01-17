@@ -40,6 +40,7 @@ export const FIELDS = {
   GAME_SEAT: {
     SEAT: 'seat',
     PLAYER_ID: 'playerID',
+    USERNAME: 'username',
     STACK: 'stack',
     BET: 'bet',
     HOLE_CARDS: 'holeCards',

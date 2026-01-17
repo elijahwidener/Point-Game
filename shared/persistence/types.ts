@@ -20,6 +20,7 @@ export interface GameState {
 export interface GameSeat {
   seat: number;
   playerID: string;
+  username?: string;
   stack: number;
   bet: number;
   holeCards: any[];
