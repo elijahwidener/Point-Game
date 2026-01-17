@@ -71,6 +71,8 @@ function applyFold(state: GameState, seat: GameSeat): void {
   seat.folded = true;
   seat.acted = true;
   seat.holeCards = [];  // muck cards
+  // we may want to check if the game has 1 active player left and handle
+  // awarding them the pot
 }
 
 function applyDeclare(

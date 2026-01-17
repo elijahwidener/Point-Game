@@ -22,11 +22,8 @@ async function processInterRoundAction(state, action) {
             case types_1.InterRoundActions.LEAVE:
                 await processLeave(state, action);
                 break;
-            case types_1.InterRoundActions.STAND_UP:
-                processStandUp(state, action);
-                break;
-            case types_1.InterRoundActions.SIT_DOWN:
-                processSitDown(state, action);
+            case types_1.InterRoundActions.TOGGLE_AWAY:
+                await processToggleAway(state, action);
                 break;
             case types_1.InterRoundActions.CONFIG_UPDATE:
                 await processConfigUpdate(state, action);
@@ -96,27 +93,14 @@ async function processLeave(state, action) {
     await (0, gameTable_1.updatePlayerCount)(state.tableID, -1);
     console.log(`Player ${userID} left table ${state.tableID}, cashed out ${seat.stack} chips`);
 }
-async function processStandUp(state, action) {
+async function processToggleAway(state, action) {
     const userID = action.userID;
     const seat = state.seats.find(s => s.playerID === userID);
     if (!seat) {
         throw new errors_1.NotFoundError('Player not seated');
     }
-    seat.active = false;
-    console.log(`Player ${userID} is now sitting out at table ${state.tableID}`);
-}
-async function processSitDown(state, action) {
-    const userID = action.userID;
-    const seat = state.seats.find(s => s.playerID === userID && !s.active);
-    if (!seat) {
-        throw new errors_1.NotFoundError('Player not found or already active');
-    }
-    const minStack = state.config.ante;
-    if (seat.stack < minStack) {
-        throw new errors_1.ConflictError(`Insufficient stack to sit back down. Need at least ${minStack} chips.`);
-    }
-    seat.active = true;
-    console.log(`Player ${userID} is back at table ${state.tableID}`);
+    seat.active = !seat.active;
+    console.log(`Player ${userID} is ${seat.active}`);
 }
 // config update for the table is handled already
 async function processConfigUpdate(state, action) {

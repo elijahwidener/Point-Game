@@ -5,8 +5,7 @@ exports.InterRoundActions = void 0;
 exports.InterRoundActions = {
     JOIN: 'Join',
     LEAVE: 'Leave',
-    STAND_UP: 'Toggle Away',
-    SIT_DOWN: 'Sit Down',
+    TOGGLE_AWAY: 'Toggle Away',
     CONFIG_UPDATE: 'Config Update',
     END: 'End',
     START: 'Start'

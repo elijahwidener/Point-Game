@@ -4,7 +4,9 @@ exports.createGameTable = createGameTable;
 exports.getTable = getTable;
 exports.listGameTables = listGameTables;
 exports.takeSeat = takeSeat;
+exports.leaveSeat = leaveSeat;
 exports.togglePause = togglePause;
+exports.toggleAway = toggleAway;
 exports.updateConfig = updateConfig;
 exports.endGame = endGame;
 exports.startGame = startGame;
@@ -92,6 +94,12 @@ async function takeSeat(tableID, userID, buyIn) {
         throw new errors_1.ConflictError('Table has ended');
     await enqueueOrProcessInterRoundAction(table, types_1.InterRoundActions.JOIN, userID, buyIn);
 }
+async function leaveSeat(tableID, userID) {
+    const table = await (0, gameTable_1.loadGameTable)(tableID);
+    if (!table)
+        throw new errors_1.NotFoundError('Table not found');
+    await enqueueOrProcessInterRoundAction(table, types_1.InterRoundActions.LEAVE, userID, null);
+}
 async function togglePause(tableID, userID) {
     const table = await getTable(tableID);
     if (table.ownerID !=
@@ -105,6 +113,12 @@ async function togglePause(tableID, userID) {
     }
     else
         throw new errors_1.ConflictError('INVALID: Game has not started or is ended');
+}
+async function toggleAway(tableID, userID) {
+    const table = await (0, gameTable_1.loadGameTable)(tableID);
+    if (!table)
+        throw new errors_1.NotFoundError('Table not found');
+    await enqueueOrProcessInterRoundAction(table, types_1.InterRoundActions.TOGGLE_AWAY, userID, null);
 }
 async function updateConfig(tableID, userID, config) {
     const table = await (0, gameTable_1.loadGameTable)(tableID);

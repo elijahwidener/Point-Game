@@ -24,11 +24,8 @@ export async function processInterRoundAction(
       case InterRoundActions.LEAVE:
         await processLeave(state, action);
         break;
-      case InterRoundActions.STAND_UP:
-        processStandUp(state, action);
-        break;
-      case InterRoundActions.SIT_DOWN:
-        processSitDown(state, action);
+      case InterRoundActions.TOGGLE_AWAY:
+        await processToggleAway(state, action)
         break;
       case InterRoundActions.CONFIG_UPDATE:
         await processConfigUpdate(state, action);
@@ -115,7 +112,7 @@ async function processLeave(
       seat.stack} chips`);
 }
 
-async function processStandUp(
+async function processToggleAway(
     state: GameState, action: InterRoundAction): Promise<void> {
   const userID = action.userID;
 
@@ -124,28 +121,8 @@ async function processStandUp(
     throw new NotFoundError('Player not seated');
   }
 
-  seat.active = false;
-  console.log(`Player ${userID} is now sitting out at table ${state.tableID}`);
-}
-
-async function processSitDown(
-    state: GameState, action: InterRoundAction): Promise<void> {
-  const userID = action.userID;
-
-  const seat = state.seats.find(s => s.playerID === userID && !s.active);
-  if (!seat) {
-    throw new NotFoundError('Player not found or already active');
-  }
-
-  const minStack = state.config.ante;
-  if (seat.stack < minStack) {
-    throw new ConflictError(
-        `Insufficient stack to sit back down. Need at least ${
-            minStack} chips.`);
-  }
-
-  seat.active = true;
-  console.log(`Player ${userID} is back at table ${state.tableID}`);
+  seat.active = !seat.active;
+  console.log(`Player ${userID} is ${seat.active}`);
 }
 
 // config update for the table is handled already

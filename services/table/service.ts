@@ -97,6 +97,15 @@ export async function takeSeat(
       table, InterRoundActions.JOIN, userID, buyIn);
 }
 
+export async function leaveSeat(
+    tableID: string, userID: string): Promise<void> {
+  const table = await loadGameTable(tableID);
+  if (!table) throw new NotFoundError('Table not found');
+
+  await enqueueOrProcessInterRoundAction(
+      table, InterRoundActions.LEAVE, userID, null);
+}
+
 export async function togglePause(
     tableID: string, userID: string): Promise<void> {
   const table = await getTable(tableID)
@@ -109,6 +118,14 @@ export async function togglePause(
     await updateTableStatus(tableID, 'Running');
   } else
     throw new ConflictError('INVALID: Game has not started or is ended');
+}
+
+export async function toggleAway(
+    tableID: string, userID: string): Promise<void> {
+  const table = await loadGameTable(tableID);
+  if (!table) throw new NotFoundError('Table not found');
+  await enqueueOrProcessInterRoundAction(
+      table, InterRoundActions.TOGGLE_AWAY, userID, null)
 }
 
 

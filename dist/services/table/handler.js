@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handler = handler;
-const connectionStore_1 = require("../../shared/persistence/connectionStore");
 const service_1 = require("./service");
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -72,10 +71,11 @@ async function handler(event) {
                     throw new Error('Invalid');
                 const tableID = event.pathParameters?.tableID;
                 const { userID } = JSON.parse(event.body);
-                // TODO: make this clean up the user from the game
-                // the websocket removal will be handled elsewhere
-                await (0, connectionStore_1.removeConnection)(tableID, userID);
-                return success(200, { message: 'Disconnected' });
+                if (!userID || !tableID) {
+                    throw new Error('Invalid');
+                }
+                await (0, service_1.leaveSeat)(tableID, userID);
+                return success(204);
             }
             case 'POST /tables/{tableID}/end': {
                 if (!event.body)
@@ -104,6 +104,15 @@ async function handler(event) {
                 const tableID = event.pathParameters?.tableID;
                 const { userID } = JSON.parse(event.body);
                 await (0, service_1.startGame)(tableID, userID);
+                return success(204);
+            }
+            case 'POST /tables/{tableID}/toggleAway': {
+                const tableID = event.pathParameters?.tableID;
+                const { userID } = JSON.parse(event.body);
+                if (!userID || !tableID) {
+                    throw new Error('Invalid');
+                }
+                await (0, service_1.toggleAway)(tableID, userID);
                 return success(204);
             }
             default:

@@ -47,8 +47,9 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
-          <Route
+        </Route>
+        {/* Table page without header */}
+        <Route
             path="table/:tableID"
             element={
               <ProtectedRoute>
@@ -56,7 +57,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-        </Route>
       </Routes>
     </BrowserRouter>
   );

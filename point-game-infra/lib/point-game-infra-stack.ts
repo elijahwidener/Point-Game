@@ -254,6 +254,8 @@ export class PointGameInfraStack extends cdk.Stack {
         'PATCH', new apigateway.LambdaIntegration(tableLambda));
     tableByID.addResource('start').addMethod(
         'POST', new apigateway.LambdaIntegration(tableLambda));
+    tableByID.addResource('toggleAway')
+        .addMethod('POST', new apigateway.LambdaIntegration(tableLambda));
 
     // ========================================
     // WebSocket API Gateway

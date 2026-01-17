@@ -125,6 +125,43 @@ class ApiService {
       throw new Error('Failed to end game');
     }
   }
+
+  async leaveSeat(tableID: string, userID: string): Promise<void> {
+    const response = await fetch(`${this.baseURL}/tables/${tableID}/leave`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({userID}),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to leave seat');
+    }
+  }
+
+  async toggleAway(tableID: string, userID: string): Promise<void> {
+    const response =
+        await fetch(`${this.baseURL}/tables/${tableID}/toggleAway`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({userID}),
+        });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to toggle sit out');
+    }
+  }
+
+  async getTable(tableID: string): Promise<GameTable> {
+    const response = await fetch(`${this.baseURL}/tables/${tableID}`);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch table');
+    }
+
+    return response.json();
+  }
 }
 
 export const api = new ApiService();
