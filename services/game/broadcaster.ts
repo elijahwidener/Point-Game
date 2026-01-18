@@ -7,6 +7,11 @@ import {applyPrivacyFiltering} from '../../shared/utils/privacyFilter'
 const apiGateway = new ApiGatewayManagementApiClient(
     {endpoint: process.env.WEBSOCKET_API_ENDPOINT});
 
+
+/**
+ * Broadcasts the full game state to all connected players.
+ * Each player receives a filtered view based on privacy rules.
+ */
 export async function broadcastState(tableID: string): Promise<void> {
   const state = await loadGameState(tableID);
   const connections = await loadTableConnections(tableID);
@@ -21,17 +26,47 @@ export async function broadcastState(tableID: string): Promise<void> {
 }
 
 
+/**
+ * Action payload for broadcasting
+ */
+interface BroadcastableAction {
+  playerID: string;
+  action: string;
+  payload?: any;
+  username?: string;
+}
+
+
+/**
+ * Broadcasts a player action to all connected players.
+ *
+ * @param tableID - The table to broadcast to
+ * @param action - The action details including playerID, action type, and
+ *     payload
+ * @param gameSeq - The game sequence number for ordering
+ * @param currentStreet - Current game street for privacy filtering
+ */
 export async function broadcastAction(
-    tableID: string, action: any, gameSeq: number): Promise<void> {
+    tableID: string, action: BroadcastableAction, gameSeq: number,
+    currentStreet: string): Promise<void> {
   const connections = await loadTableConnections(tableID);
   if (!connections) return;
-
-  const message = {type: 'action', payload: {...action, gameSeq}};
-
+  let sanitizedAction = action;
+  if (action.action === 'declare') {
+    sanitizedAction = {...action, payload: undefined};
+  }
+  const message = {type: 'action', payload: {...sanitizedAction, gameSeq}};
   await Promise.allSettled(connections.map(
       conn => postToConnection(tableID, conn.connectionID, message)));
 }
 
+/**
+ * Broadcasts a system message to all connected players.
+ * System messages include things like:
+ * - showdown_results: Winner announcements at start of next hand
+ * - discards: Cards discarded by players
+ * - street_change: When the game advances to a new street
+ */
 export async function broadcastSystem(
     tableID: string, event: string, data?: any): Promise<void> {
   const connections = await loadTableConnections(tableID);
@@ -42,6 +77,7 @@ export async function broadcastSystem(
   await Promise.allSettled(connections.map(
       conn => postToConnection(tableID, conn.connectionID, message)));
 }
+
 
 async function postToConnection(
     tableID: string, connectionID: string, message: any): Promise<void> {

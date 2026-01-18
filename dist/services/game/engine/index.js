@@ -19,6 +19,8 @@ async function processPlayerAction(tableID, playerID, action, payload) {
     if (!state)
         throw new errors_1.NotFoundError('Game state not found');
     (0, validation_1.validateAction)(state, playerID, action, payload);
+    const seat = state.seats.find(s => s.playerID === playerID);
+    const username = seat?.username || playerID;
     let newState = (0, actions_1.applyPlayerAction)(state, playerID, action, payload);
     const newGameSeq = await (0, gameState_1.updateGameState)(tableID, newState, state.gameSeq);
     newState.gameSeq = newGameSeq;
@@ -30,11 +32,11 @@ async function processPlayerAction(tableID, playerID, action, payload) {
         payload,
         timestamp: Date.now()
     });
-    // await broadcastAction(tableID, {playerID, action, payload}, newGameSeq);
-    console.log(`Action applied. Broadcasting state...`);
+    // Broadcast for action log display (TODO: and animations)
+    await (0, broadcaster_1.broadcastAction)(tableID, { playerID, action, payload, username }, newGameSeq, newState.street);
+    // TODO: possibly depreciate if broadcast action is enough (derive state)
     await (0, broadcaster_1.broadcastState)(tableID);
     const closed = (0, actions_1.isActionClosed)(newState);
-    console.log(`isActionClosed: ${closed}, street: ${newState.street}`);
     if (closed) {
         console.log(`Advancing game state...`);
         await advanceGameState(tableID, newState);

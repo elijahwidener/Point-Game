@@ -1,4 +1,5 @@
 import {Card, GameState} from '../../../shared/persistence/types';
+import {broadcastSystem} from '../broadcaster';
 
 export function createShuffledDeck(): Card[] {
   const ranks =
@@ -136,16 +137,44 @@ export function collectRoundContributions(state: GameState): void {
   })
 }
 
-export function forceDiscards(state: GameState): void {
+export async function forceDiscards(state: GameState): Promise<void> {
+  const discards = new Map<string, Card[]>();
+
   state.seats.forEach(seat => {
     if (seat.active && !seat.folded) {
+      const removed: Card[] = [];
+
       seat.holeCards = seat.holeCards.filter(card => {
-        return !state.boardCards.some(
-            boardCard => boardCard.rank === card.rank);
+        const shouldDiscard =
+            state.boardCards.some(boardCard => boardCard.rank === card.rank);
+        if (shouldDiscard) removed.push(card);
+        return !shouldDiscard;
       });
+
+      if (removed.length > 0) {
+        const key = seat.username ?? `seat ${seat.seat}`;
+        discards.set(key, removed);
+      }
     }
   });
+
+  if (discards.size > 0) {
+    await broadcastSystem(state.tableID, 'discards', {
+      discards:
+          Array.from(discards.entries())
+              .map(([username, cards]) => ({
+                     username,
+                     cards: cards.map(c => `${c.rank}${c.suit[0]}`).join(', ')
+                   })),
+      street: state.street
+    });
+  } else {
+    await broadcastSystem(
+        state.tableID, 'discards',
+        {message: 'No cards were discarded', street: state.street});
+  }
 }
+
 
 export function resetActedFlags(state: GameState): void {
   state.seats.forEach(seat => {

@@ -80,7 +80,7 @@ function validateCall(state: GameState, seat: any): void {
 }
 
 function validateRaise(state: GameState, seat: any, payload: any): void {
-  const raiseAmount = payload.raiseAmount;
+  const raiseAmount = payload.amount;
   if (!raiseAmount || raiseAmount <= 0) {
     throw new BadRequestError('Invalid raise amount');
   }

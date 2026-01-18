@@ -24,6 +24,9 @@ export async function processPlayerAction(
 
   validateAction(state, playerID, action, payload);
 
+  const seat = state.seats.find(s => s.playerID === playerID);
+  const username = (seat as any)?.username || playerID;
+
   let newState = applyPlayerAction(state, playerID, action, payload);
   const newGameSeq = await updateGameState(tableID, newState, state.gameSeq);
   newState.gameSeq = newGameSeq;
@@ -37,13 +40,15 @@ export async function processPlayerAction(
     timestamp: Date.now()
   });
 
-  // await broadcastAction(tableID, {playerID, action, payload}, newGameSeq);
-  console.log(`Action applied. Broadcasting state...`);
+  // Broadcast for action log display (TODO: and animations)
+  await broadcastAction(
+      tableID, {playerID, action, payload, username}, newGameSeq,
+      newState.street);
 
+  // TODO: possibly depreciate if broadcast action is enough (derive state)
   await broadcastState(tableID);
 
   const closed = isActionClosed(newState);
-  console.log(`isActionClosed: ${closed}, street: ${newState.street}`);
 
   if (closed) {
     console.log(`Advancing game state...`);
@@ -66,7 +71,6 @@ export async function advanceGameState(
     } catch (error) {
       throw new ConflictError('State conflict during game action');
     }
-
     await broadcastState(tableID);
 
     if (state.street === 'Interround') {
@@ -79,6 +83,7 @@ export async function advanceGameState(
         break;  // Paused, Waiting, or ended, stop here
       }
     }
+
 
     const actionStreets = ['Preflop', 'Flop', 'Turn', 'River', 'Declare'];
     if (actionStreets.includes(state.street)) {

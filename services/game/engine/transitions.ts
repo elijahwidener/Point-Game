@@ -1,6 +1,7 @@
 
 import {loadInterRoundActions, popInterRoundAction} from '../../../shared/persistence/interRoundActionQueue';
 import {GameState} from '../../../shared/persistence/types';
+import {broadcastSystem} from '../broadcaster';
 
 import {collectRoundContributions, createShuffledDeck, dealCards, dealUniqueCards, findNextActiveSeat, forceDiscards, postBlinds, resetActedFlags} from './helpers';
 import {processInterRoundAction} from './interRoundActions';
@@ -18,15 +19,15 @@ export async function transitionToStreet(state: GameState): Promise<GameState> {
 
   switch (currentStreet) {
     case 'Preflop':
-      return transitionToFlop(newState);
+      return await transitionToFlop(newState);
     case 'Flop':
-      return transitionToTurn(newState);
+      return await transitionToTurn(newState);
     case 'Turn':
-      return transitionToRiver(newState);
+      return await transitionToRiver(newState);
     case 'River':
       return transitionToDeclare(newState);
     case 'Declare':
-      return transitionToShowdown(newState);
+      return await transitionToShowdown(newState);
     case 'Showdown':
       return await transitionToInterround(newState);
     case 'Interround':
@@ -115,21 +116,21 @@ export function transitionToPreflop(state: GameState): GameState {
   return state;
 }
 
-export function transitionToFlop(state: GameState): GameState {
+export async function transitionToFlop(state: GameState): Promise<GameState> {
   state.street = 'Flop';
   collectRoundContributions(state);
 
   const newCards = dealUniqueCards(state.deck, state.boardCards, 2);
   state.boardCards.push(...newCards);
 
-  forceDiscards(state);
+  await forceDiscards(state);
   resetActedFlags(state);
   state.currentPlayerSeat = findNextActiveSeat(state, state.button);
 
   return state;
 }
 
-export function transitionToTurn(state: GameState): GameState {
+export async function transitionToTurn(state: GameState): Promise<GameState> {
   state.street = 'Turn';
   collectRoundContributions(state);
 
@@ -139,14 +140,14 @@ export function transitionToTurn(state: GameState): GameState {
     state.boardCards.push(...newCards);
   }
 
-  forceDiscards(state);
+  await forceDiscards(state);
   resetActedFlags(state);
   state.currentPlayerSeat = findNextActiveSeat(state, state.button);
 
   return state;
 }
 
-export function transitionToRiver(state: GameState): GameState {
+export async function transitionToRiver(state: GameState): Promise<GameState> {
   state.street = 'River';
   collectRoundContributions(state);
 
@@ -156,7 +157,7 @@ export function transitionToRiver(state: GameState): GameState {
     state.boardCards.push(...newCards);
   }
 
-  forceDiscards(state);
+  await forceDiscards(state);
   resetActedFlags(state);
   state.currentPlayerSeat = findNextActiveSeat(state, state.button);
   return state;
@@ -172,10 +173,14 @@ export function transitionToDeclare(state: GameState): GameState {
   return state;
 }
 
-export function transitionToShowdown(state: GameState): GameState {
+export async function transitionToShowdown(state: GameState):
+    Promise<GameState> {
   state.street = 'Showdown';
-  return resolveShowdown(state);
+  const {state: updatedState, showdownResults} = resolveShowdown(state);
+  await broadcastSystem(state.tableID, 'showdown_results', showdownResults);
+  return updatedState;
 }
+
 
 async function transitionToInterround(state: GameState): Promise<GameState> {
   state.street = 'Interround';

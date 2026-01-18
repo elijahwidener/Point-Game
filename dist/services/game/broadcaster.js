@@ -9,6 +9,10 @@ const connectionStore_1 = require("../../shared/persistence/connectionStore");
 const gameState_1 = require("../../shared/persistence/gameState");
 const privacyFilter_1 = require("../../shared/utils/privacyFilter");
 const apiGateway = new client_apigatewaymanagementapi_1.ApiGatewayManagementApiClient({ endpoint: process.env.WEBSOCKET_API_ENDPOINT });
+/**
+ * Broadcasts the full game state to all connected players.
+ * Each player receives a filtered view based on privacy rules.
+ */
 async function broadcastState(tableID) {
     const state = await (0, gameState_1.loadGameState)(tableID);
     const connections = await (0, connectionStore_1.loadTableConnections)(tableID);
@@ -20,13 +24,33 @@ async function broadcastState(tableID) {
         return postToConnection(tableID, conn.connectionID, message);
     }));
 }
-async function broadcastAction(tableID, action, gameSeq) {
+/**
+ * Broadcasts a player action to all connected players.
+ *
+ * @param tableID - The table to broadcast to
+ * @param action - The action details including playerID, action type, and
+ *     payload
+ * @param gameSeq - The game sequence number for ordering
+ * @param currentStreet - Current game street for privacy filtering
+ */
+async function broadcastAction(tableID, action, gameSeq, currentStreet) {
     const connections = await (0, connectionStore_1.loadTableConnections)(tableID);
     if (!connections)
         return;
-    const message = { type: 'action', payload: { ...action, gameSeq } };
+    let sanitizedAction = action;
+    if (action.action === 'declare') {
+        sanitizedAction = { ...action, payload: undefined };
+    }
+    const message = { type: 'action', payload: { ...sanitizedAction, gameSeq } };
     await Promise.allSettled(connections.map(conn => postToConnection(tableID, conn.connectionID, message)));
 }
+/**
+ * Broadcasts a system message to all connected players.
+ * System messages include things like:
+ * - showdown_results: Winner announcements at start of next hand
+ * - discards: Cards discarded by players
+ * - street_change: When the game advances to a new street
+ */
 async function broadcastSystem(tableID, event, data) {
     const connections = await (0, connectionStore_1.loadTableConnections)(tableID);
     if (!connections)

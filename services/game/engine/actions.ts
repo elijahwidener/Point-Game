@@ -29,7 +29,6 @@ export function applyPlayerAction(
     case 'raise':
       applyRaise(newState, seat, payload.amount);
       break;
-
     case 'fold':
       applyFold(newState, seat);
       break;
@@ -109,7 +108,7 @@ export function isActionClosed(state: GameState): boolean {
   if (state.street === 'Declare') {
     const playersWhoMustDeclare =
         state.seats.filter(seat => seat.active && !seat.folded);
-    return playersWhoMustDeclare.every(seat => seat.acted);
+    return playersWhoMustDeclare.every(seat => seat.declaration !== undefined);
   }
   // If not in betting street or declare, action is closed
   const bettingStreets = ['Preflop', 'Flop', 'Turn', 'River'];
@@ -119,10 +118,6 @@ export function isActionClosed(state: GameState): boolean {
 
   const relevantPlayers =
       state.seats.filter(seat => seat.active && !seat.folded && seat.stack > 0);
-
-  if (relevantPlayers.length <= 1) {
-    return true;
-  }
 
   for (const seat of relevantPlayers) {
     if (!seat.acted) {

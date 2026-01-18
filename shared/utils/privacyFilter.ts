@@ -6,7 +6,11 @@ export function applyPrivacyFiltering(state: GameState, playerID: string): any {
   delete (filtered as any).deck;
   filtered.seats = state.seats.map((seat: GameSeat) => {
     if (seat.playerID !== playerID) {
-      return {...seat, holeCards: seat.holeCards.map(() => null)};
+      return {
+        ...seat,
+        declaration: undefined,
+        holeCards: seat.holeCards.map(() => null)
+      };
     }
     return seat;
   });

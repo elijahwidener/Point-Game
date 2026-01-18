@@ -57,10 +57,10 @@ export function ActionBar({
   };
 
   const handleRaiseSubmit = () => {
-    onRaise(raiseAmount);
+    const finalAmount = Math.max(effectiveMinRaise, Math.min(raiseAmount, maxRaise));
+    onRaise(finalAmount);
     setShowRaiseSlider(false);
   };
-
   const presetAmounts = [
     { label: 'Min', value: effectiveMinRaise },
     { label: '½ Pot', value: Math.floor((currentBet + amountToCall) * 0.5 + amountToCall) },
@@ -134,7 +134,7 @@ export function ActionBar({
                 <input
                   type="number"
                   value={raiseAmount}
-                  onChange={(e) => handleRaiseChange(parseInt(e.target.value) || effectiveMinRaise)}
+                  onChange={(e) => setRaiseAmount(parseInt(e.target.value) || 0)}
                   className="w-full pl-7 pr-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white font-mono text-lg focus:border-amber-500 focus:outline-none"
                   min={effectiveMinRaise}
                   max={maxRaise}
@@ -189,7 +189,13 @@ export function ActionBar({
           {/* Raise */}
           {myStack > amountToCall && (
             <button
-              onClick={() => setShowRaiseSlider(!showRaiseSlider)}
+              onClick={() => {
+                if (showRaiseSlider) {
+                  handleRaiseSubmit();
+                } else {
+                  setShowRaiseSlider(true);
+                }
+              }}
               className={`flex items-center gap-2 px-8 py-3 font-semibold rounded-xl transition-all ${
                 showRaiseSlider
                   ? 'bg-amber-500 text-slate-900'
@@ -197,7 +203,7 @@ export function ActionBar({
               }`}
             >
               <TrendingUp className="w-5 h-5" />
-              Raise
+              {showRaiseSlider ? `Raise to $${raiseAmount}` : 'Raise'}
             </button>
           )}
         </div>

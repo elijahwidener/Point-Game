@@ -279,11 +279,17 @@ export class PointGameInfraStack extends cdk.Stack {
     });
     webSocketApi.grantManageConnections(connectLambda);
     webSocketApi.grantManageConnections(gameLambda);
+    webSocketApi.grantManageConnections(tableLambda);
 
     const stage = new apigatewayv2.WebSocketStage(
         this, 'GameStage', {webSocketApi, stageName: 'prod', autoDeploy: true});
 
     gameLambda.addEnvironment(
+        'WEBSOCKET_API_ENDPOINT',
+        `https://${webSocketApi.apiId}.execute-api.${
+            this.region}.amazonaws.com/${stage.stageName}`);
+
+    tableLambda.addEnvironment(
         'WEBSOCKET_API_ENDPOINT',
         `https://${webSocketApi.apiId}.execute-api.${
             this.region}.amazonaws.com/${stage.stageName}`);

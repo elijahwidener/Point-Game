@@ -65,7 +65,7 @@ function validateCall(state, seat) {
         throw new errors_1.BadRequestError('Cannot call - should check instead');
 }
 function validateRaise(state, seat, payload) {
-    const raiseAmount = payload.raiseAmount;
+    const raiseAmount = payload.amount;
     if (!raiseAmount || raiseAmount <= 0) {
         throw new errors_1.BadRequestError('Invalid raise amount');
     }

@@ -8,6 +8,7 @@ exports.postBlinds = postBlinds;
 exports.collectRoundContributions = collectRoundContributions;
 exports.forceDiscards = forceDiscards;
 exports.resetActedFlags = resetActedFlags;
+const broadcaster_1 = require("../broadcaster");
 function createShuffledDeck() {
     const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K'];
     const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
@@ -120,14 +121,36 @@ function collectRoundContributions(state) {
         }
     });
 }
-function forceDiscards(state) {
+async function forceDiscards(state) {
+    const discards = new Map();
     state.seats.forEach(seat => {
         if (seat.active && !seat.folded) {
+            const removed = [];
             seat.holeCards = seat.holeCards.filter(card => {
-                return !state.boardCards.some(boardCard => boardCard.rank === card.rank);
+                const shouldDiscard = state.boardCards.some(boardCard => boardCard.rank === card.rank);
+                if (shouldDiscard)
+                    removed.push(card);
+                return !shouldDiscard;
             });
+            if (removed.length > 0) {
+                const key = seat.username ?? `seat ${seat.seat}`;
+                discards.set(key, removed);
+            }
         }
     });
+    if (discards.size > 0) {
+        await (0, broadcaster_1.broadcastSystem)(state.tableID, 'discards', {
+            discards: Array.from(discards.entries())
+                .map(([username, cards]) => ({
+                username,
+                cards: cards.map(c => `${c.rank}${c.suit[0]}`).join(', ')
+            })),
+            street: state.street
+        });
+    }
+    else {
+        await (0, broadcaster_1.broadcastSystem)(state.tableID, 'discards', { message: 'No cards were discarded', street: state.street });
+    }
 }
 function resetActedFlags(state) {
     state.seats.forEach(seat => {

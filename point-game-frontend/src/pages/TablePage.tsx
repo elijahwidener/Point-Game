@@ -42,6 +42,9 @@ export function TablePage() {
   const { tableID } = useParams<{ tableID: string }>();
   const user = useAuthStore((state) => state.user);
 
+  // Action log
+  const { entries: actionLogEntries, addEntry: addLogEntry, clearLog } = useActionLog();
+
   // WebSocket connection
   const {
     connectionStatus,
@@ -51,6 +54,7 @@ export function TablePage() {
   } = useTableConnection({
     tableID: tableID || '',
     autoConnect: true,
+    onActionReceived: addLogEntry,
   });
 
   const refreshUser = useCallback(async () => {
@@ -85,10 +89,6 @@ export function TablePage() {
     fetchTable();
   }, [tableID]);
 
-
-  // Action log
-  const { entries: actionLogEntries, addEntry: addLogEntry, clearLog } = useActionLog();
-
   // Derived state
   const mySeat = gameState?.seats.find((s) => s.playerID === user?.userID);
   const isSeated = !!mySeat;
@@ -107,9 +107,10 @@ export function TablePage() {
   // Clear action log when hand changes
   useEffect(() => {
     if (gameState?.handSeq) {
-      clearLog();
+      // Don't clear immediately - let showdown results show first
+      // The new_hand system message will indicate when to visually separate
     }
-  }, [gameState?.handSeq, clearLog]);
+  }, [gameState?.handSeq]);
 
   // Handle seat click (open modal for empty seats)
   const handleSeatClick = useCallback((seatIndex: number) => {
@@ -141,28 +142,24 @@ export function TablePage() {
   // Game actions
   const handleFold = useCallback(() => {
     sendAction('fold');
-    addLogEntry({ playerName: 'You', action: 'fold' });
-  }, [sendAction, addLogEntry]);
+  }, [sendAction]);
 
   const handleCheck = useCallback(() => {
     sendAction('check');
-    addLogEntry({ playerName: 'You', action: 'check' });
-  }, [sendAction, addLogEntry]);
+  }, [sendAction]);
 
   const handleCall = useCallback(() => {
     sendAction('call');
-    addLogEntry({ playerName: 'You', action: 'call', amount: amountToCall });
-  }, [sendAction, addLogEntry, amountToCall]);
+  }, [sendAction, amountToCall]);
 
   const handleRaise = useCallback((amount: number) => {
-    sendAction('raise', { raiseAmount: amount - myBet });
-    addLogEntry({ playerName: 'You', action: 'raise', amount });
-  }, [sendAction, addLogEntry, myBet]);
+    console.log(`Raising ${amount}`)
+    sendAction('raise', { amount: amount });
+  }, [sendAction]);
 
   const handleDeclare = useCallback((declaration: 'high' | 'low' | 'both') => {
     sendAction('declare', { declaration });
-    addLogEntry({ playerName: 'You', action: 'declare', declaration });
-  }, [sendAction, addLogEntry]);
+  }, [sendAction]);
 
   // Owner controls
   const handleStartGame = useCallback(async () => {
@@ -327,10 +324,7 @@ export function TablePage() {
         />
 
         {/* Action Log - positioned in bottom left */}
-        <div className="fixed bottom-24 left-4 w-64 z-10">
-          <ActionLog entries={actionLogEntries} maxVisible={5} />
-        </div>
-
+          <ActionLog entries={actionLogEntries} />
         {/* My cards display - positioned in bottom right when seated */}
         {mySeat && mySeat.holeCards && mySeat.holeCards.length > 0 && (
           <DraggableCardDisplay
