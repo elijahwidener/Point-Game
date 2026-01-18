@@ -35,17 +35,19 @@ async function enqueueOrProcessInterRoundAction(
 }
 
 export async function createGameTable(
-    ownerID: string, config: TableConfig): Promise<string> {
+    ownerID: string, tableName: string, config: TableConfig): Promise<string> {
   const tableID = randomUUID();
-  await createTable(tableID, ownerID, config);
+  const finalConfig = {...config, maxPlayers: config.maxPlayers ?? 8};
+  await createTable(tableID, ownerID, tableName, finalConfig);
 
   const initialState: GameState = {
     tableID,
     handSeq: 0,
-    config,
+    config: finalConfig,
     seats: Array.from({length: 8}, (_, i) => ({
                                      seat: i,
                                      playerID: '',
+                                     username: '',
                                      stack: 0,
                                      bet: 0,
                                      holeCards: [],
@@ -93,7 +95,16 @@ export async function takeSeat(
   if (table.status === 'Ended') throw new ConflictError('Table has ended');
 
   await enqueueOrProcessInterRoundAction(
-      table, InterRoundActions.JOIN, userID, buyIn);
+      table, InterRoundActions.JOIN, userID, {buyIn, username: user.username});
+}
+
+export async function leaveSeat(
+    tableID: string, userID: string): Promise<void> {
+  const table = await loadGameTable(tableID);
+  if (!table) throw new NotFoundError('Table not found');
+
+  await enqueueOrProcessInterRoundAction(
+      table, InterRoundActions.LEAVE, userID, null);
 }
 
 export async function togglePause(
@@ -108,6 +119,14 @@ export async function togglePause(
     await updateTableStatus(tableID, 'Running');
   } else
     throw new ConflictError('INVALID: Game has not started or is ended');
+}
+
+export async function toggleAway(
+    tableID: string, userID: string): Promise<void> {
+  const table = await loadGameTable(tableID);
+  if (!table) throw new NotFoundError('Table not found');
+  await enqueueOrProcessInterRoundAction(
+      table, InterRoundActions.TOGGLE_AWAY, userID, null)
 }
 
 

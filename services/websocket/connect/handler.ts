@@ -1,13 +1,15 @@
+import {ApiGatewayManagementApiClient, PostToConnectionCommand} from '@aws-sdk/client-apigatewaymanagementapi';
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
+import {isAwaitExpression} from 'typescript';
 
 import {registerConnection} from '../../../shared/persistence/connectionStore';
-import {loadGameTable} from '../../../shared/persistence/gameTable'
+import {loadGameState} from '../../../shared/persistence/gameState';
+import {loadGameTable} from '../../../shared/persistence/gameTable';
+import {applyPrivacyFiltering} from '../../../shared/utils/privacyFilter';
 
 export async function handler(event: APIGatewayProxyEvent):
     Promise<APIGatewayProxyResult> {
   const connectionID = event.requestContext.connectionId!;
-
-  // Parse tableID and userID from query string (or custom headers)
   const tableID = event.queryStringParameters?.tableID;
   const userID = event.queryStringParameters?.userID;
 
@@ -19,8 +21,7 @@ export async function handler(event: APIGatewayProxyEvent):
   if (!table) return {statusCode: 404, body: 'Table not found'};
 
   await registerConnection(tableID, connectionID, userID);
+  console.log(`Connection ${connectionID} registered for table ${tableID}`);
 
-  console.log(`Connection ${connectionID} registered for table ${
-      tableID} and user ${userID}`);
-  return {statusCode: 200, body: ''};
+  return {statusCode: 200, body: 'Connected'};
 }

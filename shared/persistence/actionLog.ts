@@ -7,12 +7,12 @@ import {TABLES} from './dynamo/tables';
 import {ActionLog} from './types';
 
 export async function loadActionLog(
-    handID: string, actionID: number): Promise<ActionLog|null> {
+    handID: string, actionSeq: number): Promise<ActionLog|null> {
   const result = await ddb.send(new GetItemCommand({
     TableName: TABLES.ACTION_LOG,
     Key: {
       [FIELDS.ACTION_LOG.HAND_ID]: {S: handID},
-      [FIELDS.ACTION_LOG.ACTION_ID]: {N: actionID.toString()},
+      [FIELDS.ACTION_LOG.ACTION_SEQ]: {N: actionSeq.toString()},
     },
   }));
   if (!result.Item) {
@@ -24,7 +24,8 @@ export async function loadActionLog(
 export async function writeAction(entry: ActionLog): Promise<void> {
   await ddb.send(new PutItemCommand({
     TableName: TABLES.ACTION_LOG,
-    Item: marshall(entry),
-    ConditionExpression: `attribute_not_exists(${FIELDS.ACTION_LOG.ACTION_ID})`,
+    Item: marshall(entry, {removeUndefinedValues: true}),
+    ConditionExpression:
+        `attribute_not_exists(${FIELDS.ACTION_LOG.ACTION_SEQ})`,
   }));
 }

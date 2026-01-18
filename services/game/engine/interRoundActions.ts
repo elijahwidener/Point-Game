@@ -1,4 +1,5 @@
 import {ConflictError, NotFoundError, UnauthorizedError} from '../../../shared/errors';
+import {updatePlayerCount} from '../../../shared/persistence/gameTable';
 import {GameState, InterRoundAction, InterRoundActions, TableConfig} from '../../../shared/persistence/types';
 import {applyBalanceDelta} from '../../user/service';
 
@@ -23,9 +24,8 @@ export async function processInterRoundAction(
       case InterRoundActions.LEAVE:
         await processLeave(state, action);
         break;
-      case InterRoundActions.STAND_UP:
-        break;
-      case InterRoundActions.SIT_DOWN:
+      case InterRoundActions.TOGGLE_AWAY:
+        await processToggleAway(state, action)
         break;
       case InterRoundActions.CONFIG_UPDATE:
         await processConfigUpdate(state, action);
@@ -40,7 +40,10 @@ export async function processInterRoundAction(
 
 async function processJoin(
     state: GameState, action: InterRoundAction): Promise<void> {
-  const buyIn = action.payload as unknown as number;
+  const {buyIn, username} = action.payload as unknown as {
+    buyIn: number;
+    username: string
+  };
   const userID = action.userID;
 
   if (!buyIn || buyIn <= 0) {
@@ -53,8 +56,8 @@ async function processJoin(
   }
 
   const emptySeatIndex = state.seats.findIndex(s => !s.active);
-  if (emptySeatIndex === -1) {
-    throw new ConflictError('Table is full');
+  if (emptySeatIndex === -1 || emptySeatIndex >= state.config.maxPlayers) {
+    throw new ConflictError('Table Full');
   }
 
   try {
@@ -65,6 +68,7 @@ async function processJoin(
 
   const seat = state.seats[emptySeatIndex];
   seat.playerID = userID;
+  seat.username = username;
   seat.stack = buyIn;
   seat.bet = 0;
   seat.holeCards = [];
@@ -72,6 +76,8 @@ async function processJoin(
   seat.acted = false;
   seat.active = true;
   seat.declaration = undefined;
+
+  await updatePlayerCount(state.tableID, 1);
 
   console.log(`Player ${userID} joined table ${state.tableID} at seat ${
       emptySeatIndex} with ${buyIn} chips`);
@@ -104,11 +110,13 @@ async function processLeave(
   seat.active = false;
   seat.declaration = undefined;
 
+  await updatePlayerCount(state.tableID, -1);
+
   console.log(`Player ${userID} left table ${state.tableID}, cashed out ${
       seat.stack} chips`);
 }
 
-async function processStandUp(
+async function processToggleAway(
     state: GameState, action: InterRoundAction): Promise<void> {
   const userID = action.userID;
 
@@ -117,28 +125,8 @@ async function processStandUp(
     throw new NotFoundError('Player not seated');
   }
 
-  seat.active = false;
-  console.log(`Player ${userID} is now sitting out at table ${state.tableID}`);
-}
-
-async function processSitDown(
-    state: GameState, action: InterRoundAction): Promise<void> {
-  const userID = action.userID;
-
-  const seat = state.seats.find(s => s.playerID === userID && !s.active);
-  if (!seat) {
-    throw new NotFoundError('Player not found or already active');
-  }
-
-  const minStack = state.config.ante;
-  if (seat.stack < minStack) {
-    throw new ConflictError(
-        `Insufficient stack to sit back down. Need at least ${
-            minStack} chips.`);
-  }
-
-  seat.active = true;
-  console.log(`Player ${userID} is back at table ${state.tableID}`);
+  seat.active = !seat.active;
+  console.log(`Player ${userID} is ${seat.active}`);
 }
 
 // config update for the table is handled already

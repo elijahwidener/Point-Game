@@ -98,11 +98,14 @@ export async function updateCurrentInterroundActionSeq(
 
 
 export async function createTable(
-    tableID: string, ownerID: string, config: TableConfig): Promise<string> {
+    tableID: string, ownerID: string, tableName: string,
+    config: TableConfig): Promise<string> {
   const table: GameTable = {
     tableID,
     ownerID,
+    name: tableName,
     status: 'Waiting',
+    playerCount: 0,
     config,
     interRoundActionSeq: 0,
     createdAt: Date.now(),
@@ -114,4 +117,19 @@ export async function createTable(
     ConditionExpression: `attribute_not_exists(${FIELDS.GAME_TABLES.TABLE_ID})`,
   }));
   return tableID;
+}
+
+export async function updatePlayerCount(
+    tableID: string, delta: number): Promise<void> {
+  await ddb.send(new UpdateItemCommand({
+    TableName: TABLES.GAME_TABLES,
+    Key: {
+      [FIELDS.GAME_TABLES.TABLE_ID]: {S: tableID},
+    },
+    UpdateExpression: `SET ${FIELDS.GAME_TABLES.PLAYER_COUNT} = ${
+        FIELDS.GAME_TABLES.PLAYER_COUNT} + :delta`,
+    ExpressionAttributeValues: {
+      ':delta': {N: delta.toString()},
+    },
+  }));
 }

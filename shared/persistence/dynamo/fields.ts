@@ -12,7 +12,9 @@ export const FIELDS = {
   GAME_TABLES: {
     TABLE_ID: 'tableID',
     OWNER_ID: 'ownerID',
+    NAME: 'name',
     STATUS: 'status',
+    PLAYER_COUNT: 'playerCount',
     CONFIG: 'config',
     INTER_ROUND_ACTION_SEQ: 'interRoundActionSeq',
     CREATED_AT: 'createdAt',
@@ -38,6 +40,7 @@ export const FIELDS = {
   GAME_SEAT: {
     SEAT: 'seat',
     PLAYER_ID: 'playerID',
+    USERNAME: 'username',
     STACK: 'stack',
     BET: 'bet',
     HOLE_CARDS: 'holeCards',
@@ -54,7 +57,7 @@ export const FIELDS = {
 
   ACTION_LOG: {
     HAND_ID: 'handID',
-    ACTION_ID: 'actionID',
+    ACTION_SEQ: 'actionSeq',
     PLAYER_ID: 'playerID',
     ACTION: 'action',
     PAYLOAD: 'payload',
@@ -100,6 +103,7 @@ export const FIELDS = {
     ANTE: 'ante',
     SMALL_BLIND: 'smallBlind',
     BIG_BLIND: 'bigBlind',
+    MAX_PLAYERS: 'maxPlayers'
   },
 
   CARD: {

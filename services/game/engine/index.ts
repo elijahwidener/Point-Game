@@ -1,3 +1,5 @@
+import {log} from 'console';
+
 import {ConflictError, NotFoundError} from '../../../shared/errors';
 import {writeAction} from '../../../shared/persistence/actionLog';
 import {loadGameState, updateGameState} from '../../../shared/persistence/gameState';
@@ -22,21 +24,34 @@ export async function processPlayerAction(
 
   validateAction(state, playerID, action, payload);
 
+  const seat = state.seats.find(s => s.playerID === playerID);
+  const username = (seat as any)?.username || playerID;
+
   let newState = applyPlayerAction(state, playerID, action, payload);
-  newState.gameSeq = await updateGameState(tableID, newState, state.gameSeq);
+  const newGameSeq = await updateGameState(tableID, newState, state.gameSeq);
+  newState.gameSeq = newGameSeq;
 
   await writeAction({
     handID: `${tableID}#${state.handSeq || 0}`,
-    actionID: newState.gameSeq,
+    actionSeq: newState.gameSeq,
     playerID,
     action,
     payload,
     timestamp: Date.now()
   });
 
-  await broadcastAction(tableID, {playerID, action, payload});
+  // Broadcast for action log display (TODO: and animations)
+  await broadcastAction(
+      tableID, {playerID, action, payload, username}, newGameSeq,
+      newState.street);
 
-  if (isActionClosed(newState)) {
+  // TODO: possibly depreciate if broadcast action is enough (derive state)
+  await broadcastState(tableID);
+
+  const closed = isActionClosed(newState);
+
+  if (closed) {
+    console.log(`Advancing game state...`);
     await advanceGameState(tableID, newState);
   }
   // new turn timer (dont code this yet)
@@ -56,7 +71,6 @@ export async function advanceGameState(
     } catch (error) {
       throw new ConflictError('State conflict during game action');
     }
-
     await broadcastState(tableID);
 
     if (state.street === 'Interround') {
@@ -69,6 +83,7 @@ export async function advanceGameState(
         break;  // Paused, Waiting, or ended, stop here
       }
     }
+
 
     const actionStreets = ['Preflop', 'Flop', 'Turn', 'River', 'Declare'];
     if (actionStreets.includes(state.street)) {

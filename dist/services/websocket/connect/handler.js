@@ -5,7 +5,6 @@ const connectionStore_1 = require("../../../shared/persistence/connectionStore")
 const gameTable_1 = require("../../../shared/persistence/gameTable");
 async function handler(event) {
     const connectionID = event.requestContext.connectionId;
-    // Parse tableID and userID from query string (or custom headers)
     const tableID = event.queryStringParameters?.tableID;
     const userID = event.queryStringParameters?.userID;
     if (!tableID || !userID) {
@@ -15,6 +14,6 @@ async function handler(event) {
     if (!table)
         return { statusCode: 404, body: 'Table not found' };
     await (0, connectionStore_1.registerConnection)(tableID, connectionID, userID);
-    console.log(`Connection ${connectionID} registered for table ${tableID} and user ${userID}`);
-    return { statusCode: 200, body: '' };
+    console.log(`Connection ${connectionID} registered for table ${tableID}`);
+    return { statusCode: 200, body: 'Connected' };
 }

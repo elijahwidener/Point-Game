@@ -17,11 +17,11 @@ async function handler(event) {
                 if (!username || !password) {
                     throw new Error('Invalid');
                 }
-                const user = await (0, service_2.signup)(username, password);
+                const userID = await (0, service_2.signup)(username, password);
                 return {
                     statusCode: 201,
                     headers: corsHeaders,
-                    body: JSON.stringify({ user }),
+                    body: JSON.stringify({ userID }),
                 };
             }
             case '/auth/login': {

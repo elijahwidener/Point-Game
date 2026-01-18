@@ -20,11 +20,11 @@ export async function handler(event: APIGatewayProxyEvent):
         if (!username || !password) {
           throw new Error('Invalid');
         }
-        const user = await signup(username, password);
+        const userID = await signup(username, password);
         return {
           statusCode: 201,
           headers: corsHeaders,
-          body: JSON.stringify({user}),
+          body: JSON.stringify({userID}),
         };
       }
 

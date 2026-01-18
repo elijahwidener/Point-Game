@@ -1,10 +1,12 @@
 import * as cdk from 'aws-cdk-lib';
+import {Annotations} from 'aws-cdk-lib';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import {WebSocketLambdaIntegration} from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
+
 
 export class PointGameInfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -201,6 +203,7 @@ export class PointGameInfraStack extends cdk.Stack {
 
     connectionStore.grantReadWriteData(connectLambda);
     gameTables.grantReadWriteData(connectLambda);
+    gameStateTable.grantReadData(connectLambda);
     connectionStore.grantReadWriteData(disconnectLambda);
 
     // ========================================
@@ -251,6 +254,8 @@ export class PointGameInfraStack extends cdk.Stack {
         'PATCH', new apigateway.LambdaIntegration(tableLambda));
     tableByID.addResource('start').addMethod(
         'POST', new apigateway.LambdaIntegration(tableLambda));
+    tableByID.addResource('toggleAway')
+        .addMethod('POST', new apigateway.LambdaIntegration(tableLambda));
 
     // ========================================
     // WebSocket API Gateway
@@ -272,11 +277,19 @@ export class PointGameInfraStack extends cdk.Stack {
       integration:
           new WebSocketLambdaIntegration('DefaultIntegration', gameLambda)
     });
+    webSocketApi.grantManageConnections(connectLambda);
+    webSocketApi.grantManageConnections(gameLambda);
+    webSocketApi.grantManageConnections(tableLambda);
 
     const stage = new apigatewayv2.WebSocketStage(
         this, 'GameStage', {webSocketApi, stageName: 'prod', autoDeploy: true});
 
     gameLambda.addEnvironment(
+        'WEBSOCKET_API_ENDPOINT',
+        `https://${webSocketApi.apiId}.execute-api.${
+            this.region}.amazonaws.com/${stage.stageName}`);
+
+    tableLambda.addEnvironment(
         'WEBSOCKET_API_ENDPOINT',
         `https://${webSocketApi.apiId}.execute-api.${
             this.region}.amazonaws.com/${stage.stageName}`);

@@ -20,6 +20,7 @@ export interface GameState {
 export interface GameSeat {
   seat: number;
   playerID: string;
+  username?: string;
   stack: number;
   bet: number;
   holeCards: any[];
@@ -41,7 +42,7 @@ export interface Pot {
 
 export interface ActionLog {
   handID: string;
-  actionID: number;
+  actionSeq: number;
   playerID: string;
   action: string;
   payload: any[];
@@ -57,7 +58,9 @@ export interface ConnectionStore {
 export interface GameTable {
   tableID: string;
   ownerID: string;
+  name: string;
   status: GameTableStatus;
+  playerCount: number;
   config: TableConfig;
   interRoundActionSeq: number;
   createdAt: number;
@@ -73,6 +76,7 @@ export interface TableConfig {
   ante: number;
   smallBlind: number;
   bigBlind: number;
+  maxPlayers: number;
 }
 
 export interface Timer {
@@ -88,8 +92,7 @@ export interface HandSnapshot {
 export const InterRoundActions = {
   JOIN: 'Join',
   LEAVE: 'Leave',
-  STAND_UP: 'Toggle Away',
-  SIT_DOWN: 'Sit Down',
+  TOGGLE_AWAY: 'Toggle Away',
   CONFIG_UPDATE: 'Config Update',
   END: 'End',
   START: 'Start'

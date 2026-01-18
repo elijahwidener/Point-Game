@@ -6,6 +6,16 @@ export function applyPlayerAction(
     payload: any): GameState {
   // Deep clone state to avoid mutations
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
+
+  // For declare, find seat by playerID (not currentPlayerSeat)
+  if (action === 'declare') {
+    const declaringSeat = newState.seats.find(s => s.playerID === playerID);
+    if (declaringSeat) {
+      applyDeclare(newState, declaringSeat, payload.declaration);
+    }
+    return newState;
+  }
+
   const seatIndex = newState.currentPlayerSeat;
   const seat = newState.seats[seatIndex];
 
@@ -19,17 +29,11 @@ export function applyPlayerAction(
     case 'raise':
       applyRaise(newState, seat, payload.amount);
       break;
-    case 'declare':
-      applyDeclare(newState, seat, payload.declaration);
-      break;
     case 'fold':
       applyFold(newState, seat);
       break;
   }
-
-  if (action !== 'declare') {
-    advanceToNextPlayer(newState);
-  }
+  advanceToNextPlayer(newState);
   return newState;
 }
 
@@ -71,6 +75,8 @@ function applyFold(state: GameState, seat: GameSeat): void {
   seat.folded = true;
   seat.acted = true;
   seat.holeCards = [];  // muck cards
+  // we may want to check if the game has 1 active player left and handle
+  // awarding them the pot
 }
 
 function applyDeclare(
@@ -98,7 +104,13 @@ export function advanceToNextPlayer(state: GameState): void {
 }
 
 export function isActionClosed(state: GameState): boolean {
-  // If not in betting street, action is closed
+  // Check declare separately
+  if (state.street === 'Declare') {
+    const playersWhoMustDeclare =
+        state.seats.filter(seat => seat.active && !seat.folded);
+    return playersWhoMustDeclare.every(seat => seat.declaration !== undefined);
+  }
+  // If not in betting street or declare, action is closed
   const bettingStreets = ['Preflop', 'Flop', 'Turn', 'River'];
   if (!bettingStreets.includes(state.street)) {
     return true;
@@ -106,10 +118,6 @@ export function isActionClosed(state: GameState): boolean {
 
   const relevantPlayers =
       state.seats.filter(seat => seat.active && !seat.folded && seat.stack > 0);
-
-  if (relevantPlayers.length <= 1) {
-    return true;
-  }
 
   for (const seat of relevantPlayers) {
     if (!seat.acted) {
@@ -119,6 +127,5 @@ export function isActionClosed(state: GameState): boolean {
       return false;
     }
   }
-
   return true;
 }

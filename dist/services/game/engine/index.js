@@ -19,18 +19,26 @@ async function processPlayerAction(tableID, playerID, action, payload) {
     if (!state)
         throw new errors_1.NotFoundError('Game state not found');
     (0, validation_1.validateAction)(state, playerID, action, payload);
+    const seat = state.seats.find(s => s.playerID === playerID);
+    const username = seat?.username || playerID;
     let newState = (0, actions_1.applyPlayerAction)(state, playerID, action, payload);
-    newState.gameSeq = await (0, gameState_1.updateGameState)(tableID, newState, state.gameSeq);
+    const newGameSeq = await (0, gameState_1.updateGameState)(tableID, newState, state.gameSeq);
+    newState.gameSeq = newGameSeq;
     await (0, actionLog_1.writeAction)({
         handID: `${tableID}#${state.handSeq || 0}`,
-        actionID: newState.gameSeq,
+        actionSeq: newState.gameSeq,
         playerID,
         action,
         payload,
         timestamp: Date.now()
     });
-    await (0, broadcaster_1.broadcastAction)(tableID, { playerID, action, payload });
-    if ((0, actions_1.isActionClosed)(newState)) {
+    // Broadcast for action log display (TODO: and animations)
+    await (0, broadcaster_1.broadcastAction)(tableID, { playerID, action, payload, username }, newGameSeq, newState.street);
+    // TODO: possibly depreciate if broadcast action is enough (derive state)
+    await (0, broadcaster_1.broadcastState)(tableID);
+    const closed = (0, actions_1.isActionClosed)(newState);
+    if (closed) {
+        console.log(`Advancing game state...`);
         await advanceGameState(tableID, newState);
     }
     // new turn timer (dont code this yet)

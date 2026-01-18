@@ -1,8 +1,9 @@
 
 import {loadInterRoundActions, popInterRoundAction} from '../../../shared/persistence/interRoundActionQueue';
 import {GameState} from '../../../shared/persistence/types';
+import {broadcastSystem} from '../broadcaster';
 
-import {collectRoundContributions, createShuffledDeck, dealCards, findNextActiveSeat, forceDiscards, postBlinds, resetActedFlags} from './helpers';
+import {collectRoundContributions, createShuffledDeck, dealCards, dealUniqueCards, findNextActiveSeat, forceDiscards, postBlinds, resetActedFlags} from './helpers';
 import {processInterRoundAction} from './interRoundActions';
 import {resolveShowdown} from './showdown';
 
@@ -10,17 +11,23 @@ export async function transitionToStreet(state: GameState): Promise<GameState> {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   const currentStreet = newState.street;
 
+  const skipCheckStreets = ['Showdown', 'Interround'];
+  if (!skipCheckStreets.includes(currentStreet) &&
+      isSinglePlayerRemaining(newState)) {
+    return await awardPotToLastPlayer(newState);
+  }
+
   switch (currentStreet) {
     case 'Preflop':
-      return transitionToFlop(newState);
+      return await transitionToFlop(newState);
     case 'Flop':
-      return transitionToTurn(newState);
+      return await transitionToTurn(newState);
     case 'Turn':
-      return transitionToRiver(newState);
+      return await transitionToRiver(newState);
     case 'River':
       return transitionToDeclare(newState);
     case 'Declare':
-      return transitionToShowdown(newState);
+      return await transitionToShowdown(newState);
     case 'Showdown':
       return await transitionToInterround(newState);
     case 'Interround':
@@ -28,6 +35,36 @@ export async function transitionToStreet(state: GameState): Promise<GameState> {
     default:
       throw new Error(`Unknown street: ${currentStreet}`);
   }
+}
+
+function isSinglePlayerRemaining(state: GameState): boolean {
+  const activePlayers = state.seats.filter(s => s.active && !s.folded);
+  return activePlayers.length === 1;
+}
+
+
+async function awardPotToLastPlayer(state: GameState): Promise<GameState> {
+  // First collect any outstanding bets into the pot
+  collectRoundContributions(state);
+
+  const winner = state.seats.find(s => s.active && !s.folded);
+  if (!winner) {
+    console.error('No winner found in awardPotToLastPlayer');
+    return state;
+  }
+
+  let totalWon = 0;
+  for (const pot of state.pots) {
+    totalWon += pot.amount;
+    pot.amount = 0;
+  }
+  winner.stack += totalWon;
+
+  console.log(`Seat ${winner.seat} (${winner.playerID}) wins ${
+      totalWon} chips (everyone else folded)`);
+
+  // Hand is over
+  return await transitionToInterround(state);
 }
 
 
@@ -53,7 +90,7 @@ export function transitionToPreflop(state: GameState): GameState {
 
   const activePlayers = state.seats.filter(s => s.active && s.stack >= ante);
 
-  if (activePlayers.length <= 3) {
+  if (activePlayers.length < 3) {
     state.street = 'Interround';
     return state;
   }
@@ -79,48 +116,48 @@ export function transitionToPreflop(state: GameState): GameState {
   return state;
 }
 
-export function transitionToFlop(state: GameState): GameState {
+export async function transitionToFlop(state: GameState): Promise<GameState> {
   state.street = 'Flop';
   collectRoundContributions(state);
 
-  const newCards = dealCards(state.deck, 2);
+  const newCards = dealUniqueCards(state.deck, state.boardCards, 2);
   state.boardCards.push(...newCards);
 
-  forceDiscards(state);
+  await forceDiscards(state);
   resetActedFlags(state);
   state.currentPlayerSeat = findNextActiveSeat(state, state.button);
 
   return state;
 }
 
-export function transitionToTurn(state: GameState): GameState {
+export async function transitionToTurn(state: GameState): Promise<GameState> {
   state.street = 'Turn';
   collectRoundContributions(state);
 
   const cardsToDeal = Math.min(2, state.deck.length);
   if (cardsToDeal > 0) {
-    const newCards = dealCards(state.deck, cardsToDeal);
+    const newCards = dealUniqueCards(state.deck, state.boardCards, cardsToDeal);
     state.boardCards.push(...newCards);
   }
 
-  forceDiscards(state);
+  await forceDiscards(state);
   resetActedFlags(state);
   state.currentPlayerSeat = findNextActiveSeat(state, state.button);
 
   return state;
 }
 
-export function transitionToRiver(state: GameState): GameState {
+export async function transitionToRiver(state: GameState): Promise<GameState> {
   state.street = 'River';
   collectRoundContributions(state);
 
   const cardsToDeal = Math.min(1, state.deck.length);
   if (cardsToDeal > 0) {
-    const newCards = dealCards(state.deck, cardsToDeal);
+    const newCards = dealUniqueCards(state.deck, state.boardCards, cardsToDeal);
     state.boardCards.push(...newCards);
   }
 
-  forceDiscards(state);
+  await forceDiscards(state);
   resetActedFlags(state);
   state.currentPlayerSeat = findNextActiveSeat(state, state.button);
   return state;
@@ -136,10 +173,14 @@ export function transitionToDeclare(state: GameState): GameState {
   return state;
 }
 
-export function transitionToShowdown(state: GameState): GameState {
+export async function transitionToShowdown(state: GameState):
+    Promise<GameState> {
   state.street = 'Showdown';
-  return resolveShowdown(state);
+  const {state: updatedState, showdownResults} = resolveShowdown(state);
+  await broadcastSystem(state.tableID, 'showdown_results', showdownResults);
+  return updatedState;
 }
+
 
 async function transitionToInterround(state: GameState): Promise<GameState> {
   state.street = 'Interround';

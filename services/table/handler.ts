@@ -1,8 +1,9 @@
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
+import {table} from 'console';
 
 import {removeConnection} from '../../shared/persistence/connectionStore';
 
-import {createGameTable, endGame, getTable, listGameTables, startGame, takeSeat, togglePause, updateConfig} from './service';
+import {createGameTable, endGame, getTable, leaveSeat, listGameTables, startGame, takeSeat, toggleAway, togglePause, updateConfig} from './service';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,18 +29,17 @@ function error(statusCode: number, message: string): APIGatewayProxyResult {
 export async function handler(event: APIGatewayProxyEvent):
     Promise<APIGatewayProxyResult> {
   try {
-    const route =
-        `${event.httpMethod} ${event.resource}`;  // ✅ Use resource, not path
+    const route = `${event.httpMethod} ${event.resource}`;
 
     switch (route) {
       case 'POST /tables': {
         if (!event.body) throw new Error('Invalid');
 
-        const {userID, config} = JSON.parse(event.body);
-        if (!userID || !config) {
+        const {userID, tableName, config} = JSON.parse(event.body);
+        if (!userID || !config || !tableName) {
           throw new Error('Invalid');
         }
-        const tableID = await createGameTable(userID, config);
+        const tableID = await createGameTable(userID, tableName, config);
 
         return success(201, tableID);
       }
@@ -84,10 +84,11 @@ export async function handler(event: APIGatewayProxyEvent):
         if (!event.body) throw new Error('Invalid');
         const tableID = event.pathParameters?.tableID!;
         const {userID} = JSON.parse(event.body);
-        // TODO: make this clean up the user from the game
-        // the websocket removal will be handled elsewhere
-        await removeConnection(tableID, userID);
-        return success(200, {message: 'Disconnected'});
+        if (!userID || !tableID) {
+          throw new Error('Invalid');
+        }
+        await leaveSeat(tableID, userID);
+        return success(204);
       }
 
       case 'POST /tables/{tableID}/end': {
@@ -120,6 +121,16 @@ export async function handler(event: APIGatewayProxyEvent):
         const tableID = event.pathParameters?.tableID!;
         const {userID} = JSON.parse(event.body!);
         await startGame(tableID, userID);
+        return success(204);
+      }
+
+      case 'POST /tables/{tableID}/toggleAway': {
+        const tableID = event.pathParameters?.tableID;
+        const {userID} = JSON.parse(event.body!);
+        if (!userID || !tableID) {
+          throw new Error('Invalid');
+        }
+        await toggleAway(tableID, userID);
         return success(204);
       }
 

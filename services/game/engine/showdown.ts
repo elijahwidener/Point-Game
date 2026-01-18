@@ -1,20 +1,38 @@
 import {Card, GameSeat, GameState, Pot} from '../../../shared/persistence/types';
+
 interface HandValue {
   seat: GameSeat;
   value: number;
   declaration: 'high'|'low'|'both';
 }
 
-export function resolveShowdown(state: GameState): GameState {
-  // Step 1-4: Evaluate hands
+export interface ShowdownWinner {
+  seat: number;
+  playerID: string;
+  username: string;
+  side: 'high'|'low';
+  amount: number;
+}
+
+export interface ShowdownResults {
+  winners: ShowdownWinner[];
+  handSeq: number;
+}
+
+
+export function resolveShowdown(state: GameState):
+    {state: GameState, showdownResults: ShowdownResults} {
+  const showdownWinners: ShowdownWinner[] = [];  // Step 1-4: Evaluate hands
   const {highGroup, lowGroup} = determineWinners(state);
 
   // Step 5-7: Determine eligible winners and Distribute each pot
   for (const pot of state.pots) {
-    distributePot(state, pot, highGroup, lowGroup);
+    distributePot(state, pot, highGroup, lowGroup, showdownWinners);
   }
+  const results:
+      ShowdownResults = {winners: showdownWinners, handSeq: state.handSeq};
 
-  return state;
+  return {state, showdownResults: results};
 }
 
 function determineWinners(state: GameState):
@@ -104,8 +122,8 @@ function determineWinners(state: GameState):
 }
 
 function distributePot(
-    state: GameState, pot: Pot, highGroup: HandValue[],
-    lowGroup: HandValue[]): void {
+    state: GameState, pot: Pot, highGroup: HandValue[], lowGroup: HandValue[],
+    showdownWinners: ShowdownWinner[]): void {
   // Step 5: Determine winners (all players tied for best)
   // highWinners = GameSeat[]
   const eligibleHigh =
@@ -141,35 +159,34 @@ function distributePot(
 
   // Step 7: Award pot
   if (highPot > 0 && highWinners.length > 0) {
-    awardPotShare(state, highWinners, highPot);
+    awardPotShare(state, highWinners, highPot, 'high', showdownWinners);
   }
 
   if (lowPot > 0 && lowWinners.length > 0) {
-    awardPotShare(state, lowWinners, lowPot);
+    awardPotShare(state, lowWinners, lowPot, 'low', showdownWinners);
   }
 }
 
 function awardPotShare(
-    state: GameState, winners: GameSeat[], potAmount: number): void {
+    state: GameState, winners: GameSeat[], potAmount: number,
+    side: 'high'|'low', showdownWinners: ShowdownWinner[]): void {
   const share = Math.floor(potAmount / winners.length);
   const remainder = potAmount - (share * winners.length);
 
-
-  for (let i = 0; i < winners.length; i++) {
-    const winner = winners[i];
+  winners.forEach((winner, i) => {
     const seat = state.seats[winner.seat];
-
-    // Give this winner their share
-    let amount = share;
-
-    // First winner gets leftover chips
-    if (i === 0) {
-      amount += remainder;
-    }
+    const amount = share + (i === 0 ? remainder : 0);
 
     seat.stack += amount;
-    console.log(`Seat ${seat.seat} (${seat.playerID}) wins ${amount} chips`);
-  }
+
+    showdownWinners.push({
+      seat: seat.seat,
+      playerID: seat.playerID!,
+      username: seat.username ?? `seat ${seat.seat}`,
+      side,
+      amount,
+    });
+  });
 }
 
 

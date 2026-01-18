@@ -2,13 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.resolveShowdown = resolveShowdown;
 function resolveShowdown(state) {
-    // Step 1-4: Evaluate hands
+    const showdownWinners = []; // Step 1-4: Evaluate hands
     const { highGroup, lowGroup } = determineWinners(state);
     // Step 5-7: Determine eligible winners and Distribute each pot
     for (const pot of state.pots) {
-        distributePot(state, pot, highGroup, lowGroup);
+        distributePot(state, pot, highGroup, lowGroup, showdownWinners);
     }
-    return state;
+    const results = { winners: showdownWinners, handSeq: state.handSeq };
+    return { state, showdownResults: results };
 }
 function determineWinners(state) {
     // Step 0: Ensure declarations
@@ -82,7 +83,7 @@ function determineWinners(state) {
     }
     return { highGroup, lowGroup };
 }
-function distributePot(state, pot, highGroup, lowGroup) {
+function distributePot(state, pot, highGroup, lowGroup, showdownWinners) {
     // Step 5: Determine winners (all players tied for best)
     // highWinners = GameSeat[]
     const eligibleHigh = highGroup.filter(h => pot.eligibleSeats.includes(h.seat.seat));
@@ -114,27 +115,27 @@ function distributePot(state, pot, highGroup, lowGroup) {
     }
     // Step 7: Award pot
     if (highPot > 0 && highWinners.length > 0) {
-        awardPotShare(state, highWinners, highPot);
+        awardPotShare(state, highWinners, highPot, 'high', showdownWinners);
     }
     if (lowPot > 0 && lowWinners.length > 0) {
-        awardPotShare(state, lowWinners, lowPot);
+        awardPotShare(state, lowWinners, lowPot, 'low', showdownWinners);
     }
 }
-function awardPotShare(state, winners, potAmount) {
+function awardPotShare(state, winners, potAmount, side, showdownWinners) {
     const share = Math.floor(potAmount / winners.length);
     const remainder = potAmount - (share * winners.length);
-    for (let i = 0; i < winners.length; i++) {
-        const winner = winners[i];
+    winners.forEach((winner, i) => {
         const seat = state.seats[winner.seat];
-        // Give this winner their share
-        let amount = share;
-        // First winner gets leftover chips
-        if (i === 0) {
-            amount += remainder;
-        }
+        const amount = share + (i === 0 ? remainder : 0);
         seat.stack += amount;
-        console.log(`Seat ${seat.seat} (${seat.playerID}) wins ${amount} chips`);
-    }
+        showdownWinners.push({
+            seat: seat.seat,
+            playerID: seat.playerID,
+            username: seat.username ?? `seat ${seat.seat}`,
+            side,
+            amount,
+        });
+    });
 }
 function evaluateHand(holeCards, aceValue) {
     const allCards = [...holeCards];
