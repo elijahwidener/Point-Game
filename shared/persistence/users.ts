@@ -2,16 +2,17 @@ import {GetItemCommand, PutItemCommand, QueryCommand, UpdateItemCommand} from '@
 import {marshall, unmarshall} from '@aws-sdk/util-dynamodb';
 
 import {ddb} from './dynamo/client';
+import {FIELDS} from './dynamo/fields';
 import {TABLES} from './dynamo/tables';
 import {User} from './types';
 
 
-export async function loadUser(userId: string):
+export async function loadUser(userID: string):
     Promise<{userID: string; username: string; balance: number}|null> {
   const result = await ddb.send(new GetItemCommand({
     TableName: TABLES.USERS,
     Key: {
-      userId: {S: userId},
+      [FIELDS.USERS.USER_ID]: {S: userID},
     },
   }));
 
@@ -31,7 +32,7 @@ export async function getAuthByUsername(username: string):
   const result = await ddb.send(new QueryCommand({
     TableName: TABLES.USERS,
     IndexName: 'UsernameIndex',
-    KeyConditionExpression: 'username = :u',
+    KeyConditionExpression: `${FIELDS.USERS.USERNAME} = :u`,
     ExpressionAttributeValues: {
       ':u': {S: username},
     },
@@ -62,8 +63,7 @@ export async function createUser(
   await ddb.send(new PutItemCommand({
     TableName: TABLES.USERS,
     Item: marshall(user),
-    ConditionExpression: 'attribute_not_exists(userID)',
-
+    ConditionExpression: `attribute_not_exists(${FIELDS.USERS.USER_ID})`,
   }));
   return userID;
 }
@@ -73,14 +73,14 @@ export async function applyBalanceUpdate(
   const result = await ddb.send(new UpdateItemCommand({
     TableName: TABLES.USERS,
     Key: {
-      userID: {S: userID},
+      [FIELDS.USERS.USER_ID]: {S: userID},
     },
-    UpdateExpression: 'ADD balance :delta',
-    ConditionExpression: 'attribute_exists(userID) AND balance >= :min',
+    UpdateExpression: `ADD ${FIELDS.USERS.BALANCE} :delta`,
+    ConditionExpression: `attribute_exists(${FIELDS.USERS.USER_ID}) AND ${
+        FIELDS.USERS.BALANCE} >= :min`,
     ExpressionAttributeValues: {
       ':delta': {N: delta.toString()},
       ':min': {N: '0'},
-
     },
     ReturnValues: 'UPDATED_NEW',
   }));

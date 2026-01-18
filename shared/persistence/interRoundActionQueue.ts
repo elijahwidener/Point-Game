@@ -2,6 +2,7 @@ import {AttributeValue, DeleteItemCommand, PutItemCommand, QueryCommand} from '@
 import {marshall, unmarshall} from '@aws-sdk/util-dynamodb';
 
 import {ddb} from './dynamo/client';
+import {FIELDS} from './dynamo/fields';
 import {TABLES} from './dynamo/tables';
 import {InterRoundAction, InterRoundActionType} from './types';
 
@@ -10,7 +11,8 @@ export async function loadInterRoundActions(tableID: string):
     Promise<InterRoundAction[]> {
   const result = await ddb.send(new QueryCommand({
     TableName: TABLES.INTER_ROUND_ACTION_QUEUE,
-    KeyConditionExpression: 'tableID = :tableID',
+    KeyConditionExpression:
+        `${FIELDS.INTER_ROUND_ACTION_QUEUE.TABLE_ID} = :tableID`,
     ExpressionAttributeValues: {
       ':tableID': {S: tableID},
     },
@@ -37,8 +39,9 @@ export async function enqueueInterRoundAction(
   await ddb.send(new PutItemCommand({
     TableName: TABLES.INTER_ROUND_ACTION_QUEUE,
     Item: marshall(item),
-    ConditionExpression:
-        'attribute_not_exists(tableID) AND attribute_not_exists(actionSeq)',
+    ConditionExpression: `attribute_not_exists(${
+        FIELDS.INTER_ROUND_ACTION_QUEUE.TABLE_ID}) AND attribute_not_exists(${
+        FIELDS.INTER_ROUND_ACTION_QUEUE.ACTION_SEQ})`,
   }));
 
   return actionSeq;
@@ -49,7 +52,8 @@ export async function popInterRoundAction(tableID: string):
     Promise<InterRoundAction|undefined> {
   const res = await ddb.send(new QueryCommand({
     TableName: TABLES.INTER_ROUND_ACTION_QUEUE,
-    KeyConditionExpression: 'tableID = :tableID',
+    KeyConditionExpression:
+        `${FIELDS.INTER_ROUND_ACTION_QUEUE.TABLE_ID} = :tableID`,
     ExpressionAttributeValues: {
       ':tableID': {S: tableID},
     },
@@ -66,8 +70,11 @@ export async function popInterRoundAction(tableID: string):
   await ddb.send(new DeleteItemCommand({
     TableName: TABLES.INTER_ROUND_ACTION_QUEUE,
     Key: {
-      tableID: {S: tableID},
-      actionSeq: {N: action.actionSeq.toString()},
+      [FIELDS.INTER_ROUND_ACTION_QUEUE.TABLE_ID]: {S: tableID},
+      [FIELDS.INTER_ROUND_ACTION_QUEUE.ACTION_SEQ]:
+          {N: action.actionSeq.toString()},
     },
   }));
+
+  return action;
 }

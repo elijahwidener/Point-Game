@@ -2,6 +2,7 @@ import {GetItemCommand, PutItemCommand} from '@aws-sdk/client-dynamodb';
 import {marshall, unmarshall} from '@aws-sdk/util-dynamodb';
 
 import {ddb} from './dynamo/client';
+import {FIELDS} from './dynamo/fields';
 import {TABLES} from './dynamo/tables';
 import {GameState} from './types';
 
@@ -9,7 +10,7 @@ export async function loadGameState(tableID: string): Promise<GameState|null> {
   const result = await ddb.send(new GetItemCommand({
     TableName: TABLES.GAME_STATE,
     Key: {
-      tableID: {S: tableID},
+      [FIELDS.GAME_STATE.TABLE_ID]: {S: tableID},
     },
   }));
   if (!result.Item) {
@@ -18,6 +19,13 @@ export async function loadGameState(tableID: string): Promise<GameState|null> {
   return unmarshall(result.Item) as GameState;
 }
 
+export async function createGameState(initialState: GameState): Promise<void> {
+  await ddb.send(new PutItemCommand({
+    TableName: TABLES.GAME_STATE,
+    Item: marshall(initialState),
+    ConditionExpression: `attribute_not_exists(${FIELDS.GAME_STATE.TABLE_ID})`,
+  }));
+}
 
 export async function updateGameState(
     tableID: string, mutatedState: GameState, expectedGameSeq: number,
@@ -31,8 +39,8 @@ export async function updateGameState(
 
   await ddb.send(new PutItemCommand({
     TableName: TABLES.GAME_STATE,
-    Item: marshall(nextState),
-    ConditionExpression: 'gameSeq = :expectedSeq',
+    Item: marshall(nextState, {removeUndefinedValues: true}),
+    ConditionExpression: `${FIELDS.GAME_STATE.GAME_SEQ} = :expectedSeq`,
     ExpressionAttributeValues: {
       ':expectedSeq': {N: expectedGameSeq.toString()},
     },

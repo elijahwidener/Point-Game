@@ -2,6 +2,7 @@ import {GetItemCommand, PutItemCommand, ScanCommand, UpdateItemCommand} from '@a
 import {marshall, unmarshall} from '@aws-sdk/util-dynamodb';
 
 import {ddb} from './dynamo/client';
+import {FIELDS} from './dynamo/fields';
 import {TABLES} from './dynamo/tables';
 import {GameTable, GameTableStatus, TableConfig, TableListFilter} from './types';
 
@@ -10,7 +11,7 @@ export async function loadGameTable(tableID: string): Promise<GameTable|null> {
   const result = await ddb.send(new GetItemCommand({
     TableName: TABLES.GAME_TABLES,
     Key: {
-      tableID: {S: tableID},
+      [FIELDS.GAME_TABLES.TABLE_ID]: {S: tableID},
     },
   }));
   if (!result.Item) {
@@ -28,7 +29,7 @@ export async function listTables(filter: TableListFilter = {}):
 
   if (filter.status) {
     expressions.push('#status = :status');
-    names['#status'] = 'status';
+    names['#status'] = FIELDS.GAME_TABLES.STATUS;
     values[':status'] = {S: filter.status};
   }
 
@@ -48,11 +49,11 @@ export async function updateTableStatus(
   await ddb.send(new UpdateItemCommand({
     TableName: TABLES.GAME_TABLES,
     Key: {
-      tableID: {S: tableID},
+      [FIELDS.GAME_TABLES.TABLE_ID]: {S: tableID},
     },
-    UpdateExpression: 'SET #status = :status',
+    UpdateExpression: `SET #status = :status`,
     ExpressionAttributeNames: {
-      '#status': 'status',
+      '#status': FIELDS.GAME_TABLES.STATUS,
     },
     ExpressionAttributeValues: {
       ':status': {S: status},
@@ -65,11 +66,11 @@ export async function updateTableConfig(
   await ddb.send(new UpdateItemCommand({
     TableName: TABLES.GAME_TABLES,
     Key: {
-      tableID: {S: tableID},
+      [FIELDS.GAME_TABLES.TABLE_ID]: {S: tableID},
     },
-    UpdateExpression: 'SET #config = :config',
+    UpdateExpression: `SET #config = :config`,
     ExpressionAttributeNames: {
-      '#config': 'config',
+      '#config': FIELDS.GAME_TABLES.CONFIG,
     },
     ExpressionAttributeValues: {
       ':config': {M: marshall(config)},
@@ -82,10 +83,12 @@ export async function updateCurrentInterroundActionSeq(
   await ddb.send(new UpdateItemCommand({
     TableName: TABLES.GAME_TABLES,
     Key: {
-      tableID: {S: tableID},
+      [FIELDS.GAME_TABLES.TABLE_ID]: {S: tableID},
     },
-    UpdateExpression: 'SET currentInterroundActionSeq = :next',
-    ConditionExpression: 'currentInterroundActionSeq = :expected',
+    UpdateExpression:
+        `SET ${FIELDS.GAME_TABLES.INTER_ROUND_ACTION_SEQ} = :next`,
+    ConditionExpression:
+        `${FIELDS.GAME_TABLES.INTER_ROUND_ACTION_SEQ} = :expected`,
     ExpressionAttributeValues: {
       ':expected': {N: expectedSeq.toString()},
       ':next': {N: nextSeq.toString()},
@@ -95,11 +98,14 @@ export async function updateCurrentInterroundActionSeq(
 
 
 export async function createTable(
-    tableID: string, ownerID: string, config: TableConfig): Promise<string> {
+    tableID: string, ownerID: string, tableName: string,
+    config: TableConfig): Promise<string> {
   const table: GameTable = {
     tableID,
     ownerID,
+    name: tableName,
     status: 'Waiting',
+    playerCount: 0,
     config,
     interRoundActionSeq: 0,
     createdAt: Date.now(),
@@ -108,8 +114,22 @@ export async function createTable(
   await ddb.send(new PutItemCommand({
     TableName: TABLES.GAME_TABLES,
     Item: marshall(table),
-    ConditionExpression: 'attribute_not_exists(tableID)',
-
+    ConditionExpression: `attribute_not_exists(${FIELDS.GAME_TABLES.TABLE_ID})`,
   }));
   return tableID;
+}
+
+export async function updatePlayerCount(
+    tableID: string, delta: number): Promise<void> {
+  await ddb.send(new UpdateItemCommand({
+    TableName: TABLES.GAME_TABLES,
+    Key: {
+      [FIELDS.GAME_TABLES.TABLE_ID]: {S: tableID},
+    },
+    UpdateExpression: `SET ${FIELDS.GAME_TABLES.PLAYER_COUNT} = ${
+        FIELDS.GAME_TABLES.PLAYER_COUNT} + :delta`,
+    ExpressionAttributeValues: {
+      ':delta': {N: delta.toString()},
+    },
+  }));
 }
