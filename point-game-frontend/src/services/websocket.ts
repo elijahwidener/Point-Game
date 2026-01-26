@@ -141,7 +141,7 @@ export class TableWebSocket {
    * otherwise
    */
   private handleActionMessage(actionPayLoad: any): void {
-    const {gameSeq, action} = actionPayLoad;
+    const {gameSeq} = actionPayLoad;
 
     if (this.lastKnownSeq !== null && this.lastKnownSeq + 1 !== gameSeq) {
       console.warn(`Sequence mismatch: expected ${this.lastKnownSeq + 1}, got ${
@@ -151,7 +151,7 @@ export class TableWebSocket {
     }
 
     this.lastKnownSeq = gameSeq;
-    this.callbacks.onActionReceived(action);
+    this.callbacks.onActionReceived(actionPayLoad);
   }
 
   /**

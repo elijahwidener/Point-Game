@@ -2,6 +2,7 @@ import {ApiGatewayManagementApiClient, PostToConnectionCommand} from '@aws-sdk/c
 
 import {loadTableConnections, removeConnection} from '../../shared/persistence/connectionStore';
 import {loadGameState} from '../../shared/persistence/gameState';
+import {logger} from '../../shared/utils/logger';
 import {applyPrivacyFiltering} from '../../shared/utils/privacyFilter'
 
 const apiGateway = new ApiGatewayManagementApiClient(
@@ -15,8 +16,17 @@ const apiGateway = new ApiGatewayManagementApiClient(
 export async function broadcastState(tableID: string): Promise<void> {
   const state = await loadGameState(tableID);
   const connections = await loadTableConnections(tableID);
+  const log = logger.child({tableID, fn: 'broadcastState'});
 
   if (!state || !connections) return;
+
+  log.info('State to broadcast', {
+    street: state.street,
+    gameSeq: state.gameSeq,
+    handSeq: state.handSeq,
+    boardCards: state.boardCards,
+    currentPlayerSeat: state.currentPlayerSeat,
+  });
 
   await Promise.allSettled(connections.map(conn => {
     const filteredState = applyPrivacyFiltering(state, conn.playerID);

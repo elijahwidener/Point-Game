@@ -5,32 +5,40 @@ import {createGameState, loadGameState, updateGameState} from '../../shared/pers
 import {createTable, listTables, loadGameTable, updateCurrentInterroundActionSeq, updateTableConfig, updateTableStatus} from '../../shared/persistence/gameTable';
 import {enqueueInterRoundAction} from '../../shared/persistence/interRoundActionQueue';
 import {GameState, GameTable, InterRoundAction, InterRoundActions, InterRoundActionType, TableConfig, TableListFilter} from '../../shared/persistence/types';
+import {logger} from '../../shared/utils/logger';
 import {advanceGameState} from '../game/engine';
 import {processInterRoundAction} from '../game/engine/interRoundActions';
-import {getMe} from '../user/service'
+import {getMe} from '../user/service';
 
 
 async function enqueueOrProcessInterRoundAction(
     table: GameTable, type: InterRoundActionType, userID: string,
     payload: any): Promise<void> {
-  const gameState = await loadGameState(table.tableID);
+  const tableID = table.tableID
+  const gameState = await loadGameState(tableID);
+  const log = logger.child({tableID, fn: 'takeSeat'});
+
   if (!gameState) throw new NotFoundError('GameState not found');
+
   if (gameState?.street === 'Interround') {
     const action: InterRoundAction = {
-      tableID: table.tableID,
+      tableID: tableID,
       actionSeq: table.interRoundActionSeq + 1,
       userID,
       type,
       payload
     };
+    log.info('No game or at Interround, processing join immediately');
     await processInterRoundAction(gameState, action);
-    await updateGameState(table.tableID, gameState, gameState.gameSeq);
+    await updateGameState(tableID, gameState, gameState.gameSeq);
   } else {
+    log.info('Game in progress, enqueueing join action', {
+      currentStreet: gameState.street,
+    });
     await enqueueInterRoundAction(
-        table.tableID, table.interRoundActionSeq + 1, userID, type, payload);
+        tableID, table.interRoundActionSeq + 1, userID, type, payload);
     await updateCurrentInterroundActionSeq(
-        table.tableID, table.interRoundActionSeq,
-        table.interRoundActionSeq + 1);
+        tableID, table.interRoundActionSeq, table.interRoundActionSeq + 1);
   }
 }
 

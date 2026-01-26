@@ -5,6 +5,7 @@ import {writeAction} from '../../../shared/persistence/actionLog';
 import {loadGameState, updateGameState} from '../../../shared/persistence/gameState';
 import {loadGameTable} from '../../../shared/persistence/gameTable';
 import {GameState} from '../../../shared/persistence/types';
+import {logger} from '../../../shared/utils/logger';
 import {broadcastAction, broadcastState} from '../broadcaster';
 
 import {applyPlayerAction, isActionClosed} from './actions';
@@ -20,7 +21,20 @@ export async function processPlayerAction(
     tableID: string, playerID: string, action: string,
     payload: any): Promise<void> {
   const state = await loadGameState(tableID);
-  if (!state) throw new NotFoundError('Game state not found');
+  const log = logger.child({tableID, fn: 'processPlayerAction'});
+  log.info('Player action received', {playerID, action, payload});
+
+  if (!state) {
+    log.error('Game state not found');
+    throw new NotFoundError('Game not found');
+  }
+
+  log.info('Current state', {
+    street: state.street,
+    gameSeq: state.gameSeq,
+    handSeq: state.handSeq,
+    currentPlayerSeat: state.currentPlayerSeat,
+  });
 
   validateAction(state, playerID, action, payload);
 
@@ -49,9 +63,8 @@ export async function processPlayerAction(
   await broadcastState(tableID);
 
   const closed = isActionClosed(newState);
-
   if (closed) {
-    console.log(`Advancing game state...`);
+    log.info('Action closed, advancing game state');
     await advanceGameState(tableID, newState);
   }
   // new turn timer (dont code this yet)
@@ -60,33 +73,53 @@ export async function processPlayerAction(
 export async function advanceGameState(
     tableID: string, currentState: GameState): Promise<void> {
   let state = currentState;
+  const log = logger.child({tableID, fn: 'advanceGameState'});
 
   // Keep processing until we hit a player action street
   while (true) {
+    const prevStreet = state.street;
+
     state = await transitionToStreet(state);
+
+    log.info('Street transition completed', {
+      from: prevStreet,
+      to: state.street,
+      gameSeq: state.gameSeq,
+      boardCards: state.boardCards.length,
+      potsCount: state.pots.length,
+    });
 
     try {
       const newGameSeq = await updateGameState(tableID, state, state.gameSeq);
       state.gameSeq = newGameSeq;
+      log.info('State persisted', {newGameSeq});
     } catch (error) {
+      log.error(
+          'State conflict during game action',
+          {error: (error as Error).message});
       throw new ConflictError('State conflict during game action');
     }
+
     await broadcastState(tableID);
 
     if (state.street === 'Interround') {
-      // Check if we should continue to next hand
       const table = await loadGameTable(tableID);
-      if (!table) throw new NotFoundError('Table not found');
+      log.info(
+          'At Interround, checking table status', {tableStatus: table?.status});
+
       if (table?.status === 'Running') {
-        continue;  // Loop will transition to Preflop
+        log.info('Table running, continuing to next hand');
+        continue;
       } else {
-        break;  // Paused, Waiting, or ended, stop here
+        log.info('Table not running, stopping advancement');
+        break;
       }
     }
 
 
     const actionStreets = ['Preflop', 'Flop', 'Turn', 'River', 'Declare'];
     if (actionStreets.includes(state.street)) {
+      log.info('Reached action street, stopping advancement');
       break;
     }
   }

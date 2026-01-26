@@ -47,7 +47,7 @@ function calculatePoints(cards: Card[]): { low: number; high: number; hasAce: bo
   return { low, high, hasAce };
 }
 
-export function DraggableCardDisplay({ cards, stack, className = '' }: DraggableCardDisplayProps) {
+export function DraggableCardDisplay({ cards, className = '' }: DraggableCardDisplayProps) {
   // Position state - default to top right
   const [position, setPosition] = useState({ x: window.innerWidth - 280, y: 100 });
 

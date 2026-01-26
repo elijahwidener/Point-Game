@@ -1,6 +1,7 @@
 
 import {loadInterRoundActions, popInterRoundAction} from '../../../shared/persistence/interRoundActionQueue';
 import {GameState} from '../../../shared/persistence/types';
+import {logger} from '../../../shared/utils/logger';
 import {broadcastSystem} from '../broadcaster';
 
 import {collectRoundContributions, createShuffledDeck, dealCards, dealUniqueCards, findNextActiveSeat, forceDiscards, postBlinds, resetActedFlags} from './helpers';
@@ -8,14 +9,24 @@ import {processInterRoundAction} from './interRoundActions';
 import {resolveShowdown} from './showdown';
 
 export async function transitionToStreet(state: GameState): Promise<GameState> {
+  const log = logger.child({
+    tableID: state.tableID,
+    fn: 'transitionToStreet',
+    fromStreet: state.street,
+    handSeq: state.handSeq,
+  });
+
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   const currentStreet = newState.street;
 
   const skipCheckStreets = ['Showdown', 'Interround'];
   if (!skipCheckStreets.includes(currentStreet) &&
       isSinglePlayerRemaining(newState)) {
+    log.info('Single player remaining, awarding pot');
     return await awardPotToLastPlayer(newState);
   }
+
+  log.info('Transitioning street', {currentStreet});
 
   switch (currentStreet) {
     case 'Preflop':
@@ -33,6 +44,7 @@ export async function transitionToStreet(state: GameState): Promise<GameState> {
     case 'Interround':
       return transitionToPreflop(newState);
     default:
+      log.error('Unknown street', {currentStreet});
       throw new Error(`Unknown street: ${currentStreet}`);
   }
 }
@@ -151,6 +163,8 @@ export async function transitionToRiver(state: GameState): Promise<GameState> {
   state.street = 'River';
   collectRoundContributions(state);
 
+
+
   const cardsToDeal = Math.min(1, state.deck.length);
   if (cardsToDeal > 0) {
     const newCards = dealUniqueCards(state.deck, state.boardCards, cardsToDeal);
@@ -160,6 +174,7 @@ export async function transitionToRiver(state: GameState): Promise<GameState> {
   await forceDiscards(state);
   resetActedFlags(state);
   state.currentPlayerSeat = findNextActiveSeat(state, state.button);
+
   return state;
 }
 
@@ -183,15 +198,43 @@ export async function transitionToShowdown(state: GameState):
 
 
 async function transitionToInterround(state: GameState): Promise<GameState> {
+  const log = logger.child({
+    tableID: state.tableID,
+    fn: 'transitionToInterround',
+    handSeq: state.handSeq,
+  });
   state.street = 'Interround';
+  log.info('Entering Interround, loading action queue');
 
   // load up the queue
   const queue = await loadInterRoundActions(state.tableID);
+  log.info('Loaded interround actions', {
+    queueLength: queue.length,
+    actions: queue.map(
+        a => ({type: a.type, userID: a.userID, actionSeq: a.actionSeq})),
+  });
 
   for (const action of queue) {
-    await processInterRoundAction(state, action);
+    log.info('Processing interround action', {
+      type: action.type,
+      userID: action.userID,
+      actionSeq: action.actionSeq,
+      payload: action.payload,
+    });
+    try {
+      await processInterRoundAction(state, action);
+      log.info('Action processed successfully', {type: action.type});
+    } catch (error) {
+      log.error('Failed to process interround action', {
+        type: action.type,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
     await popInterRoundAction(state.tableID);
+    log.info('Action popped from queue', {type: action.type});
   }
 
+  log.info('Interround processing complete');
   return state;
 }

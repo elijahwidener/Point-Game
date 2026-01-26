@@ -7,6 +7,7 @@ exports.sendToConnection = sendToConnection;
 const client_apigatewaymanagementapi_1 = require("@aws-sdk/client-apigatewaymanagementapi");
 const connectionStore_1 = require("../../shared/persistence/connectionStore");
 const gameState_1 = require("../../shared/persistence/gameState");
+const logger_1 = require("../../shared/utils/logger");
 const privacyFilter_1 = require("../../shared/utils/privacyFilter");
 const apiGateway = new client_apigatewaymanagementapi_1.ApiGatewayManagementApiClient({ endpoint: process.env.WEBSOCKET_API_ENDPOINT });
 /**
@@ -16,8 +17,16 @@ const apiGateway = new client_apigatewaymanagementapi_1.ApiGatewayManagementApiC
 async function broadcastState(tableID) {
     const state = await (0, gameState_1.loadGameState)(tableID);
     const connections = await (0, connectionStore_1.loadTableConnections)(tableID);
+    const log = logger_1.logger.child({ tableID, fn: 'broadcastState' });
     if (!state || !connections)
         return;
+    log.info('State to broadcast', {
+        street: state.street,
+        gameSeq: state.gameSeq,
+        handSeq: state.handSeq,
+        boardCards: state.boardCards,
+        currentPlayerSeat: state.currentPlayerSeat,
+    });
     await Promise.allSettled(connections.map(conn => {
         const filteredState = (0, privacyFilter_1.applyPrivacyFiltering)(state, conn.playerID);
         const message = { type: 'state', payload: filteredState };

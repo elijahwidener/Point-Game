@@ -1,50 +1,76 @@
 import {ConflictError, NotFoundError, UnauthorizedError} from '../../../shared/errors';
 import {updatePlayerCount} from '../../../shared/persistence/gameTable';
 import {GameState, InterRoundAction, InterRoundActions, TableConfig} from '../../../shared/persistence/types';
+import {logger} from '../../../shared/utils/logger';
 import {applyBalanceDelta} from '../../user/service';
 
 import {advanceGameState} from '././index';
 
 
-
 export async function processInterRoundAction(
     state: GameState, action: InterRoundAction): Promise<void> {
+  const log = logger.child({
+    tableID: state.tableID,
+    fn: 'processInterRoundAction',
+    actionType: action.type,
+    actionSeq: action.actionSeq,
+    userID: action.userID,
+  });
+
   try {
-    // Validate and process based on type
     switch (action.type) {
       case InterRoundActions.START:
+        log.info('Processing START action');
         await advanceGameState(state.tableID, state);
         break;
       case InterRoundActions.END:
+        log.info('Processing END action');
         await processEnd(state, action);
         break;
       case InterRoundActions.JOIN:
+        log.info('Processing JOIN action');
         await processJoin(state, action);
         break;
       case InterRoundActions.LEAVE:
+        log.info('Processing LEAVE action');
         await processLeave(state, action);
         break;
       case InterRoundActions.TOGGLE_AWAY:
-        await processToggleAway(state, action)
+        log.info('Processing TOGGLE_AWAY action');
+        await processToggleAway(state, action);
         break;
       case InterRoundActions.CONFIG_UPDATE:
+        log.info('Processing CONFIG_UPDATE action');
         await processConfigUpdate(state, action);
         break;
+      default:
+        log.error('Unknown interround action type', {type: action.type});
     }
-
+    log.info('Interround action completed successfully');
   } catch (error) {
-    console.error('Failed to process interround action:', error);
+    log.error('Failed to process interround action', {
+      error: (error as Error).message,
+      stack: (error as Error).stack,
+    });
     throw error;
   }
 }
 
 async function processJoin(
     state: GameState, action: InterRoundAction): Promise<void> {
+  const log = logger.child({
+    tableID: state.tableID,
+    fn: 'processJoin',
+    userID: action.userID,
+  });
+
   const {buyIn, username} = action.payload as unknown as {
     buyIn: number;
     username: string
   };
   const userID = action.userID;
+  log.info('Join request', {buyIn});
+
 
   if (!buyIn || buyIn <= 0) {
     throw new ConflictError('Invalid buy-in amount');
@@ -57,9 +83,9 @@ async function processJoin(
 
   const emptySeatIndex = state.seats.findIndex(s => !s.active);
   if (emptySeatIndex === -1 || emptySeatIndex >= state.config.maxPlayers) {
+    log.error('No empty seat available');
     throw new ConflictError('Table Full');
   }
-
   try {
     await applyBalanceDelta(userID, -buyIn);
   } catch (error) {

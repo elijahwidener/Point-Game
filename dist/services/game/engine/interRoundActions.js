@@ -4,40 +4,65 @@ exports.processInterRoundAction = processInterRoundAction;
 const errors_1 = require("../../../shared/errors");
 const gameTable_1 = require("../../../shared/persistence/gameTable");
 const types_1 = require("../../../shared/persistence/types");
+const logger_1 = require("../../../shared/utils/logger");
 const service_1 = require("../../user/service");
 const index_1 = require("././index");
 async function processInterRoundAction(state, action) {
+    const log = logger_1.logger.child({
+        tableID: state.tableID,
+        fn: 'processInterRoundAction',
+        actionType: action.type,
+        actionSeq: action.actionSeq,
+        userID: action.userID,
+    });
     try {
-        // Validate and process based on type
         switch (action.type) {
             case types_1.InterRoundActions.START:
+                log.info('Processing START action');
                 await (0, index_1.advanceGameState)(state.tableID, state);
                 break;
             case types_1.InterRoundActions.END:
+                log.info('Processing END action');
                 await processEnd(state, action);
                 break;
             case types_1.InterRoundActions.JOIN:
+                log.info('Processing JOIN action');
                 await processJoin(state, action);
                 break;
             case types_1.InterRoundActions.LEAVE:
+                log.info('Processing LEAVE action');
                 await processLeave(state, action);
                 break;
             case types_1.InterRoundActions.TOGGLE_AWAY:
+                log.info('Processing TOGGLE_AWAY action');
                 await processToggleAway(state, action);
                 break;
             case types_1.InterRoundActions.CONFIG_UPDATE:
+                log.info('Processing CONFIG_UPDATE action');
                 await processConfigUpdate(state, action);
                 break;
+            default:
+                log.error('Unknown interround action type', { type: action.type });
         }
+        log.info('Interround action completed successfully');
     }
     catch (error) {
-        console.error('Failed to process interround action:', error);
+        log.error('Failed to process interround action', {
+            error: error.message,
+            stack: error.stack,
+        });
         throw error;
     }
 }
 async function processJoin(state, action) {
+    const log = logger_1.logger.child({
+        tableID: state.tableID,
+        fn: 'processJoin',
+        userID: action.userID,
+    });
     const { buyIn, username } = action.payload;
     const userID = action.userID;
+    log.info('Join request', { buyIn });
     if (!buyIn || buyIn <= 0) {
         throw new errors_1.ConflictError('Invalid buy-in amount');
     }
@@ -47,6 +72,7 @@ async function processJoin(state, action) {
     }
     const emptySeatIndex = state.seats.findIndex(s => !s.active);
     if (emptySeatIndex === -1 || emptySeatIndex >= state.config.maxPlayers) {
+        log.error('No empty seat available');
         throw new errors_1.ConflictError('Table Full');
     }
     try {

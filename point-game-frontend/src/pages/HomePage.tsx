@@ -99,7 +99,7 @@ export function HomePage() {
                 </p>
               </div>
               <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                <img src="../public/table-setup.jpg" alt="Table Setup" className="w-full h-auto" />
+                <img src="/table-setup.png" alt="Table Setup" className="w-full h-auto" />
               </div>
             </div>
 
@@ -112,7 +112,7 @@ export function HomePage() {
                 </p>
               </div>
               <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                <img src="/table-preflop.jpg" alt="Preflop Action" className="w-full h-auto" />
+                <img src="/table-preflop.png" alt="Preflop Action" className="w-full h-auto" />
               </div>
             </div>
 
@@ -125,7 +125,7 @@ export function HomePage() {
                 </p>
               </div>
               <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                <img src="/table-flop.jpg" alt="Flop with Discards" className="w-full h-auto" />
+                <img src="/table-flop.png" alt="Flop with Discards" className="w-full h-auto" />
               </div>
             </div>
 
@@ -138,7 +138,7 @@ export function HomePage() {
                 </p>
               </div>
               <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                <img src="/table-turn.jpg" alt="Turn Street" className="w-full h-auto" />
+                <img src="/table-turn.png" alt="Turn Street" className="w-full h-auto" />
               </div>
             </div>
 
@@ -151,7 +151,7 @@ export function HomePage() {
                 </p>
               </div>
               <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                <img src="/table-river.jpg" alt="River Street" className="w-full h-auto" />
+                <img src="/table-river.png" alt="River Street" className="w-full h-auto" />
               </div>
             </div>
 
@@ -169,7 +169,7 @@ export function HomePage() {
                 </div>
               </div>
               <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                <img src="/table-declare.jpg" alt="Declaration Phase" className="w-full h-auto" />
+                <img src="/table-declare.png" alt="Declaration Phase" className="w-full h-auto" />
               </div>
             </div>
 
@@ -182,7 +182,7 @@ export function HomePage() {
                 </p>
               </div>
               <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                <img src="/table-showdown.jpg" alt="Showdown" className="w-full h-auto" />
+                <img src="/table-showdown.png" alt="Showdown" className="w-full h-auto" />
               </div>
             </div>
           </div>

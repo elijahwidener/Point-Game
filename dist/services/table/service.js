@@ -16,27 +16,34 @@ const gameState_1 = require("../../shared/persistence/gameState");
 const gameTable_1 = require("../../shared/persistence/gameTable");
 const interRoundActionQueue_1 = require("../../shared/persistence/interRoundActionQueue");
 const types_1 = require("../../shared/persistence/types");
+const logger_1 = require("../../shared/utils/logger");
 const engine_1 = require("../game/engine");
 const interRoundActions_1 = require("../game/engine/interRoundActions");
 const service_1 = require("../user/service");
 async function enqueueOrProcessInterRoundAction(table, type, userID, payload) {
-    const gameState = await (0, gameState_1.loadGameState)(table.tableID);
+    const tableID = table.tableID;
+    const gameState = await (0, gameState_1.loadGameState)(tableID);
+    const log = logger_1.logger.child({ tableID, fn: 'takeSeat' });
     if (!gameState)
         throw new errors_1.NotFoundError('GameState not found');
     if (gameState?.street === 'Interround') {
         const action = {
-            tableID: table.tableID,
+            tableID: tableID,
             actionSeq: table.interRoundActionSeq + 1,
             userID,
             type,
             payload
         };
+        log.info('No game or at Interround, processing join immediately');
         await (0, interRoundActions_1.processInterRoundAction)(gameState, action);
-        await (0, gameState_1.updateGameState)(table.tableID, gameState, gameState.gameSeq);
+        await (0, gameState_1.updateGameState)(tableID, gameState, gameState.gameSeq);
     }
     else {
-        await (0, interRoundActionQueue_1.enqueueInterRoundAction)(table.tableID, table.interRoundActionSeq + 1, userID, type, payload);
-        await (0, gameTable_1.updateCurrentInterroundActionSeq)(table.tableID, table.interRoundActionSeq, table.interRoundActionSeq + 1);
+        log.info('Game in progress, enqueueing join action', {
+            currentStreet: gameState.street,
+        });
+        await (0, interRoundActionQueue_1.enqueueInterRoundAction)(tableID, table.interRoundActionSeq + 1, userID, type, payload);
+        await (0, gameTable_1.updateCurrentInterroundActionSeq)(tableID, table.interRoundActionSeq, table.interRoundActionSeq + 1);
     }
 }
 async function createGameTable(ownerID, tableName, config) {

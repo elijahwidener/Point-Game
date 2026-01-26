@@ -8,18 +8,27 @@ exports.transitionToRiver = transitionToRiver;
 exports.transitionToDeclare = transitionToDeclare;
 exports.transitionToShowdown = transitionToShowdown;
 const interRoundActionQueue_1 = require("../../../shared/persistence/interRoundActionQueue");
+const logger_1 = require("../../../shared/utils/logger");
 const broadcaster_1 = require("../broadcaster");
 const helpers_1 = require("./helpers");
 const interRoundActions_1 = require("./interRoundActions");
 const showdown_1 = require("./showdown");
 async function transitionToStreet(state) {
+    const log = logger_1.logger.child({
+        tableID: state.tableID,
+        fn: 'transitionToStreet',
+        fromStreet: state.street,
+        handSeq: state.handSeq,
+    });
     const newState = JSON.parse(JSON.stringify(state));
     const currentStreet = newState.street;
     const skipCheckStreets = ['Showdown', 'Interround'];
     if (!skipCheckStreets.includes(currentStreet) &&
         isSinglePlayerRemaining(newState)) {
+        log.info('Single player remaining, awarding pot');
         return await awardPotToLastPlayer(newState);
     }
+    log.info('Transitioning street', { currentStreet });
     switch (currentStreet) {
         case 'Preflop':
             return await transitionToFlop(newState);
@@ -36,6 +45,7 @@ async function transitionToStreet(state) {
         case 'Interround':
             return transitionToPreflop(newState);
         default:
+            log.error('Unknown street', { currentStreet });
             throw new Error(`Unknown street: ${currentStreet}`);
     }
 }
@@ -150,12 +160,40 @@ async function transitionToShowdown(state) {
     return updatedState;
 }
 async function transitionToInterround(state) {
+    const log = logger_1.logger.child({
+        tableID: state.tableID,
+        fn: 'transitionToInterround',
+        handSeq: state.handSeq,
+    });
     state.street = 'Interround';
+    log.info('Entering Interround, loading action queue');
     // load up the queue
     const queue = await (0, interRoundActionQueue_1.loadInterRoundActions)(state.tableID);
+    log.info('Loaded interround actions', {
+        queueLength: queue.length,
+        actions: queue.map(a => ({ type: a.type, userID: a.userID, actionSeq: a.actionSeq })),
+    });
     for (const action of queue) {
-        await (0, interRoundActions_1.processInterRoundAction)(state, action);
+        log.info('Processing interround action', {
+            type: action.type,
+            userID: action.userID,
+            actionSeq: action.actionSeq,
+            payload: action.payload,
+        });
+        try {
+            await (0, interRoundActions_1.processInterRoundAction)(state, action);
+            log.info('Action processed successfully', { type: action.type });
+        }
+        catch (error) {
+            log.error('Failed to process interround action', {
+                type: action.type,
+                error: error.message,
+            });
+            throw error;
+        }
         await (0, interRoundActionQueue_1.popInterRoundAction)(state.tableID);
+        log.info('Action popped from queue', { type: action.type });
     }
+    log.info('Interround processing complete');
     return state;
 }

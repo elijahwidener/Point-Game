@@ -43,7 +43,7 @@ export function TablePage() {
   const user = useAuthStore((state) => state.user);
 
   // Action log
-  const { entries: actionLogEntries, addEntry: addLogEntry, clearLog } = useActionLog();
+  const { entries: actionLogEntries, addEntry: addLogEntry} = useActionLog();
 
   // WebSocket connection
   const {
