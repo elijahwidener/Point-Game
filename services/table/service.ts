@@ -6,6 +6,7 @@ import {createTable, listTables, loadGameTable, updateCurrentInterroundActionSeq
 import {enqueueInterRoundAction} from '../../shared/persistence/interRoundActionQueue';
 import {GameState, GameTable, InterRoundAction, InterRoundActions, InterRoundActionType, TableConfig, TableListFilter} from '../../shared/persistence/types';
 import {logger} from '../../shared/utils/logger';
+import {broadcastState} from '../game/broadcaster';
 import {advanceGameState} from '../game/engine';
 import {processInterRoundAction} from '../game/engine/interRoundActions';
 import {getMe} from '../user/service';
@@ -31,6 +32,7 @@ async function enqueueOrProcessInterRoundAction(
     log.info('No game or at Interround, processing join immediately');
     await processInterRoundAction(gameState, action);
     await updateGameState(tableID, gameState, gameState.gameSeq);
+    await broadcastState(tableID);
   } else {
     log.info('Game in progress, enqueueing join action', {
       currentStreet: gameState.street,
@@ -125,6 +127,10 @@ export async function togglePause(
     await updateTableStatus(tableID, 'Paused');
   } else if (table.status === 'Paused') {
     await updateTableStatus(tableID, 'Running');
+    const state = await loadGameState(tableID);
+    if (state && state.street === 'Interround') {
+      await advanceGameState(tableID, state);
+    }
   } else
     throw new ConflictError('INVALID: Game has not started or is ended');
 }

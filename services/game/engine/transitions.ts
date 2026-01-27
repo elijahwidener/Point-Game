@@ -95,8 +95,16 @@ export function transitionToPreflop(state: GameState): GameState {
 
   // Sit out players with insufficient stack
   state.seats.forEach(seat => {
-    if (seat.active && seat.stack < ante) {
+    if (seat.active && seat.stack <= ante) {
+      seat.playerID = '';
+      seat.username = '';
+      seat.stack = 0;
       seat.active = false;
+      seat.folded = false;
+      seat.holeCards = [];
+      seat.bet = 0;
+      seat.bet = 0;
+      seat.declaration = undefined;
     }
   });
 

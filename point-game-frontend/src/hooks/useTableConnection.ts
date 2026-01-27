@@ -174,6 +174,10 @@ export function useTableConnection(
   const handleError = useCallback((error: {code: number; message: string}) => {
     console.error('WebSocket error:', error);
     setError(error);
+    if (error.code === 409 && wsRef.current) {
+      console.log('Conflict error received, requesting resync...');
+      wsRef.current.requestResync();
+    }
   }, [setError]);
 
   const handleStatusChange = useCallback((status: ConnectionStatus) => {

@@ -46,3 +46,10 @@ echo ""
 echo "================================"
 echo -e "${GREEN}Build Complete!${NC}"
 echo "================================"
+
+
+# Sync to S3
+# aws s3 sync dist/ s3://point-game-frontend-prod --delete
+
+# Invalidate CloudFront cache
+# aws cloudfront create-invalidation --distribution-id E2N6WZYH8V3ZJ7 --paths "/*"

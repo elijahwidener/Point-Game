@@ -84,8 +84,16 @@ function transitionToPreflop(state) {
     state.button = (0, helpers_1.findNextActiveSeat)(state, state.button);
     // Sit out players with insufficient stack
     state.seats.forEach(seat => {
-        if (seat.active && seat.stack < ante) {
+        if (seat.active && seat.stack <= ante) {
+            seat.playerID = '';
+            seat.username = '';
+            seat.stack = 0;
             seat.active = false;
+            seat.folded = false;
+            seat.holeCards = [];
+            seat.bet = 0;
+            seat.bet = 0;
+            seat.declaration = undefined;
         }
     });
     const activePlayers = state.seats.filter(s => s.active && s.stack >= ante);

@@ -17,6 +17,7 @@ const gameTable_1 = require("../../shared/persistence/gameTable");
 const interRoundActionQueue_1 = require("../../shared/persistence/interRoundActionQueue");
 const types_1 = require("../../shared/persistence/types");
 const logger_1 = require("../../shared/utils/logger");
+const broadcaster_1 = require("../game/broadcaster");
 const engine_1 = require("../game/engine");
 const interRoundActions_1 = require("../game/engine/interRoundActions");
 const service_1 = require("../user/service");
@@ -37,6 +38,7 @@ async function enqueueOrProcessInterRoundAction(table, type, userID, payload) {
         log.info('No game or at Interround, processing join immediately');
         await (0, interRoundActions_1.processInterRoundAction)(gameState, action);
         await (0, gameState_1.updateGameState)(tableID, gameState, gameState.gameSeq);
+        await (0, broadcaster_1.broadcastState)(tableID);
     }
     else {
         log.info('Game in progress, enqueueing join action', {
@@ -118,6 +120,10 @@ async function togglePause(tableID, userID) {
     }
     else if (table.status === 'Paused') {
         await (0, gameTable_1.updateTableStatus)(tableID, 'Running');
+        const state = await (0, gameState_1.loadGameState)(tableID);
+        if (state && state.street === 'Interround') {
+            await (0, engine_1.advanceGameState)(tableID, state);
+        }
     }
     else
         throw new errors_1.ConflictError('INVALID: Game has not started or is ended');
