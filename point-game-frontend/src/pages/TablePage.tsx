@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { RefreshCw, Home, Settings } from 'lucide-react';
+import { RefreshCw, Home } from 'lucide-react';
 
 import { useTableConnection } from '../hooks/useTableConnection';
 import { useAuthStore } from '../stores/authStore';
@@ -8,6 +8,8 @@ import { api } from '../services/api';
 import type { GameTable } from '../types/game';
 import { DeclarationModal } from '../components/modals/DeclarationModal';
 import { DraggableCardDisplay } from '../components/table/DraggableCardDisplay';
+import type { LastActionType } from '../components/table/PlayerSeat';
+import type { ActionLogEntry } from '../components/table/ActionLog';
 
 import {
   PokerTable,
@@ -19,8 +21,22 @@ import {
   TakeSeatModal,
 } from '../components/table';
 
-// Connection status indicator
-function ConnectionStatus({ status }: { status: string }) {
+// Connection status indicator - includes "joining" state
+interface ConnectionStatusProps {
+  status: string;
+  isJoining?: boolean;
+}
+
+function ConnectionStatus({ status, isJoining = false }: ConnectionStatusProps) {
+  if (isJoining) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+        <span className="text-sm text-amber-400">Joining table...</span>
+      </div>
+    );
+  }
+
   const statusConfig: Record<string, { color: string; text: string; pulse: boolean }> = {
     disconnected: { color: 'bg-red-500', text: 'Disconnected', pulse: false },
     connecting: { color: 'bg-yellow-500', text: 'Connecting...', pulse: true },
@@ -43,7 +59,41 @@ export function TablePage() {
   const user = useAuthStore((state) => state.user);
 
   // Action log
-  const { entries: actionLogEntries, addEntry: addLogEntry} = useActionLog();
+  const { entries: actionLogEntries, addEntry: addLogEntry } = useActionLog();
+
+  // Track seat actions for badges
+  const [seatActions, setSeatActions] = useState<Map<number, { action: LastActionType; amount?: number }>>(new Map());
+  const previousStreetRef = useRef<string | null>(null);
+  const previousHandSeqRef = useRef<number | null>(null);
+  
+  // Ref to access current gameState in callback without causing re-renders
+  const gameStateRef = useRef<any>(null);
+
+  // Callback for action received - updates both log and seat actions
+  const handleActionReceived = useCallback((entry: Omit<ActionLogEntry, 'id' | 'timestamp'>) => {
+    addLogEntry(entry);
+    
+    // Update seat action badge
+    if (entry.action && ['check', 'call', 'raise', 'fold', 'declare'].includes(entry.action)) {
+      const currentGameState = gameStateRef.current;
+      if (currentGameState?.seats) {
+        const seatIndex = currentGameState.seats.findIndex(
+          (s: any) => s.username === entry.playerName || s.playerID?.slice(0, 8) === entry.playerName
+        );
+        
+        if (seatIndex >= 0) {
+          setSeatActions(prev => {
+            const next = new Map(prev);
+            next.set(seatIndex, { 
+              action: entry.action as LastActionType, 
+              amount: entry.amount 
+            });
+            return next;
+          });
+        }
+      }
+    }
+  }, [addLogEntry]);
 
   // WebSocket connection
   const {
@@ -54,8 +104,30 @@ export function TablePage() {
   } = useTableConnection({
     tableID: tableID || '',
     autoConnect: true,
-    onActionReceived: addLogEntry,
+    onActionReceived: handleActionReceived,
   });
+
+  // Keep gameStateRef in sync
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
+  // Clear seat actions when street changes or new hand starts
+  useEffect(() => {
+    if (!gameState) return;
+    
+    const streetChanged = previousStreetRef.current !== null && 
+                          previousStreetRef.current !== gameState.street;
+    const handChanged = previousHandSeqRef.current !== null && 
+                        previousHandSeqRef.current !== gameState.handSeq;
+    
+    if (streetChanged || handChanged) {
+      setSeatActions(new Map());
+    }
+    
+    previousStreetRef.current = gameState.street;
+    previousHandSeqRef.current = gameState.handSeq;
+  }, [gameState?.street, gameState?.handSeq]);
 
   const refreshUser = useCallback(async () => {
     if (!user?.userID) return;
@@ -73,6 +145,7 @@ export function TablePage() {
     seatIndex: 0,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tableData, setTableData] = useState<GameTable | null>(null);
 
@@ -97,6 +170,12 @@ export function TablePage() {
   const isSittingOut = mySeat ? !mySeat.active : false;
   const needsToDeclare = gameState?.street === 'Declare' && !mySeat?.declaration && !mySeat?.folded;
 
+  // Reset isJoining when we become seated
+  useEffect(() => {
+    if (isSeated) {
+      setIsJoining(false);
+    }
+  }, [isSeated]);
 
   // Calculate betting values
   const myBet = mySeat?.bet || 0;
@@ -104,17 +183,9 @@ export function TablePage() {
   const amountToCall = currentBet - myBet;
   const canCheck = amountToCall === 0;
 
-  // Clear action log when hand changes
-  useEffect(() => {
-    if (gameState?.handSeq) {
-      // Don't clear immediately - let showdown results show first
-      // The new_hand system message will indicate when to visually separate
-    }
-  }, [gameState?.handSeq]);
-
   // Handle seat click (open modal for empty seats)
   const handleSeatClick = useCallback((seatIndex: number) => {
-    if (isSeated) return; // Already seated
+    if (isSeated) return;
     setTakeSeatModal({ isOpen: true, seatIndex });
     setError(null);
   }, [isSeated]);
@@ -124,42 +195,57 @@ export function TablePage() {
     if (!tableID || !user?.userID) return;
 
     setIsLoading(true);
+    setIsJoining(true);
     setError(null);
 
     try {
       await api.sitDown(tableID, user.userID, buyIn);
       setTakeSeatModal({ isOpen: false, seatIndex: 0 });
-      // Request resync to get updated state
       requestResync();
       await refreshUser();
     } catch (err: any) {
       setError(err.message || 'Failed to sit down');
+      setIsJoining(false);
     } finally {
       setIsLoading(false);
     }
-  }, [tableID, user?.userID, requestResync]);
+  }, [tableID, user?.userID, requestResync, refreshUser]);
 
-  // Game actions
+  // Game actions - update seat actions immediately for optimistic UI
   const handleFold = useCallback(() => {
+    if (mySeat) {
+      setSeatActions(prev => new Map(prev).set(mySeat.seat, { action: 'fold' }));
+    }
     sendAction('fold');
-  }, [sendAction]);
+  }, [sendAction, mySeat]);
 
   const handleCheck = useCallback(() => {
+    if (mySeat) {
+      setSeatActions(prev => new Map(prev).set(mySeat.seat, { action: 'check' }));
+    }
     sendAction('check');
-  }, [sendAction]);
+  }, [sendAction, mySeat]);
 
   const handleCall = useCallback(() => {
+    if (mySeat) {
+      setSeatActions(prev => new Map(prev).set(mySeat.seat, { action: 'call', amount: amountToCall }));
+    }
     sendAction('call');
-  }, [sendAction, amountToCall]);
+  }, [sendAction, mySeat, amountToCall]);
 
   const handleRaise = useCallback((amount: number) => {
-    console.log(`Raising ${amount}`)
-    sendAction('raise', { amount: amount });
-  }, [sendAction]);
+    if (mySeat) {
+      setSeatActions(prev => new Map(prev).set(mySeat.seat, { action: 'raise', amount }));
+    }
+    sendAction('raise', { amount });
+  }, [sendAction, mySeat]);
 
   const handleDeclare = useCallback((declaration: 'high' | 'low' | 'both') => {
+    if (mySeat) {
+      setSeatActions(prev => new Map(prev).set(mySeat.seat, { action: 'declare' }));
+    }
     sendAction('declare', { declaration });
-  }, [sendAction]);
+  }, [sendAction, mySeat]);
 
   // Owner controls
   const handleStartGame = useCallback(async () => {
@@ -214,7 +300,7 @@ export function TablePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tableID, user?.userID, requestResync]);
+  }, [tableID, user?.userID, requestResync, refreshUser]);
 
   const handleToggleSitOut = useCallback(async () => {
     if (!tableID || !user?.userID) return;
@@ -258,7 +344,7 @@ export function TablePage() {
                   {gameState?.tableName || `Table ${tableID?.slice(0, 8)}...`}
                 </h1>
                 <div className="flex items-center gap-3">
-                  <ConnectionStatus status={connectionStatus} />
+                  <ConnectionStatus status={connectionStatus} isJoining={isJoining} />
                   {gameState && (
                     <>
                       <span className="text-xs text-slate-500">•</span>
@@ -275,8 +361,16 @@ export function TablePage() {
               </div>
             </div>
 
-            {/* Center: Owner controls */}
-            <div className="flex items-center gap-2">
+            {/* Right: Controls */}
+            <div className="flex items-center gap-3">
+              <PlayerControls
+                isSeated={isSeated || isJoining}
+                isSittingOut={isSittingOut}
+                onLeaveSeat={handleLeaveSeat}
+                onToggleSitOut={handleToggleSitOut}
+                isLoading={isLoading}
+              />
+
               {isOwner && (
                 <OwnerControls
                   tableStatus={tableStatus}
@@ -286,46 +380,31 @@ export function TablePage() {
                   isLoading={isLoading}
                 />
               )}
-            </div>
 
-            {/* Right: Player controls & resync */}
-            <div className="flex items-center gap-3">
-              <PlayerControls
-                isSeated={isSeated}
-                isSittingOut={isSittingOut}
-                onLeaveSeat={handleLeaveSeat}
-                onToggleSitOut={handleToggleSitOut}
-                isLoading={isLoading}
-              />
-              
               <button
                 onClick={requestResync}
                 className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
-                title="Resync"
+                title="Refresh game state"
               >
                 <RefreshCw className="w-5 h-5 text-slate-400" />
-              </button>
-              
-              <button className="p-2 hover:bg-slate-800 rounded-lg transition-colors">
-                <Settings className="w-5 h-5 text-slate-400" />
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main table area */}
-      <main className="relative py-8 px-4">
+      {/* Main game area */}
+      <main className="relative p-4 md:p-8">
         <PokerTable
           gameState={gameState}
           myUserID={user?.userID || ''}
           onSeatClick={handleSeatClick}
           isSeated={isSeated}
+          seatActions={seatActions}
         />
 
-        {/* Action Log - positioned in bottom left */}
-          <ActionLog entries={actionLogEntries} />
-        {/* My cards display - positioned in bottom right when seated */}
+        <ActionLog entries={actionLogEntries} />
+        
         {mySeat && mySeat.holeCards && mySeat.holeCards.length > 0 && (
           <DraggableCardDisplay
             cards={mySeat.holeCards}
@@ -334,7 +413,7 @@ export function TablePage() {
         )}
       </main>
 
-      {/* Action Bar - fixed at bottom */}
+      {/* Action Bar */}
       {isSeated && (
         <ActionBar
           isMyTurn={isMyTurn}
@@ -352,7 +431,6 @@ export function TablePage() {
       )}
 
       {/* Take Seat Modal */}
-      {/* TODO: Make min/max buy-in configurable in table config */}
       <TakeSeatModal
         isOpen={takeSeatModal.isOpen}
         onClose={() => setTakeSeatModal({ isOpen: false, seatIndex: 0 })}

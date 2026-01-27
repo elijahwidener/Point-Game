@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { DisplayState, DisplaySeat } from '../../stores/gameStore';
-import { PlayerSeat } from './PlayerSeat';
+import { PlayerSeat, type LastActionType } from './PlayerSeat';
 import { BoardArea } from './BoardArea';
 
 interface PokerTableProps {
@@ -8,6 +8,8 @@ interface PokerTableProps {
   myUserID: string;
   onSeatClick: (seatIndex: number) => void;
   isSeated?: boolean;
+  // Map of seat index to their last action
+  seatActions?: Map<number, { action: LastActionType; amount?: number }>;
 }
 
 // Seat positions around an oval table (8 seats)
@@ -23,7 +25,13 @@ const SEAT_POSITIONS = [
   { x: 85, y: 85, label: 'bottom-right' }, // Seat 7
 ];
 
-export function PokerTable({ gameState, myUserID, onSeatClick, isSeated = false }: PokerTableProps) {
+export function PokerTable({ 
+  gameState, 
+  myUserID, 
+  onSeatClick, 
+  isSeated = false,
+  seatActions,
+}: PokerTableProps) {
   // Calculate total pot
   const totalPot = useMemo(() => {
     if (!gameState?.pots) return 0;
@@ -73,38 +81,32 @@ export function PokerTable({ gameState, myUserID, onSeatClick, isSeated = false 
         </div>
       </div>
 
-      {/* Wood rail */}
-      <div className="absolute inset-0 rounded-[50%] border-[16px] border-amber-950 shadow-inner pointer-events-none" 
-        style={{
-          background: 'transparent',
-          boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.5), inset 0 -4px 20px rgba(0,0,0,0.3)',
-        }}
-      />
-
-      {/* Outer rim glow */}
-      <div 
-        className="absolute inset-[-2px] rounded-[50%] pointer-events-none"
-        style={{
-          background: 'linear-gradient(135deg, rgba(245,158,11,0.1) 0%, transparent 50%, rgba(245,158,11,0.05) 100%)',
-        }}
-      />
+      {/* Wood rail (outer ring) */}
+      <div className="absolute inset-0 rounded-[50%] pointer-events-none" style={{
+        background: 'linear-gradient(135deg, #78350f 0%, #451a03 50%, #78350f 100%)',
+        mask: 'radial-gradient(ellipse 48% 48% at 50% 50%, transparent 95%, black 95%)',
+        WebkitMask: 'radial-gradient(ellipse 48% 48% at 50% 50%, transparent 95%, black 95%)',
+      }} />
 
       {/* Player seats */}
       {seats.map((seat, index) => {
         const position = SEAT_POSITIONS[index];
         const isEmpty = !seat.playerID;
-        const isCurrentPlayer = gameState?.currentPlayerSeat === index && seat.playerID !== '';
-        const isButton = gameState?.button === index;
+        const isCurrentPlayer = gameState?.currentPlayerSeat === index && !isEmpty;
+        const isButton = gameState?.button === index && !isEmpty;
         const isMe = seat.playerID === myUserID;
+        
+        // Get last action for this seat
+        const seatActionData = seatActions?.get(index);
 
         return (
           <div
             key={index}
-            className="absolute transform -translate-x-1/2 -translate-y-2/3 w-32"
+            className="absolute transform -translate-x-1/2 -translate-y-1/2"
             style={{
               left: `${position.x}%`,
               top: `${position.y}%`,
-              zIndex: isCurrentPlayer ? 20 : 10,
+              width: '140px',
             }}
           >
             <PlayerSeat
@@ -112,27 +114,15 @@ export function PokerTable({ gameState, myUserID, onSeatClick, isSeated = false 
               isCurrentPlayer={isCurrentPlayer}
               isButton={isButton}
               isMe={isMe}
+              onSeatClick={!isSeated && isEmpty ? () => onSeatClick(index) : undefined}
               isEmpty={isEmpty}
-              onSeatClick={() => onSeatClick(index)}
               hideEmptySeats={isSeated}
+              lastAction={seatActionData?.action}
+              lastActionAmount={seatActionData?.amount}
             />
           </div>
         );
       })}
-
-      {/* Card deal animation keyframes */}
-      <style>{`
-        @keyframes cardDeal {
-          from {
-            opacity: 0;
-            transform: translateY(-20px) scale(0.8);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
     </div>
   );
 }

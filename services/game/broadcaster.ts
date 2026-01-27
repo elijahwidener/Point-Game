@@ -99,9 +99,7 @@ async function postToConnection(
   } catch (error: any) {
     if (error.statusCode === 410) {
       await removeConnection(tableID, connectionID);
-      console.log(`Removed stale connection: ${connectionID}`);
     } else {
-      console.error(`Failed to send to ${connectionID}: ${error.message}`);
     }
   }
 }

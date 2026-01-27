@@ -1,6 +1,9 @@
-import { User, Clock, Target } from 'lucide-react';
+import { User, Clock, Target, Check, X, TrendingUp, Flag, Eye } from 'lucide-react';
 import type { DisplaySeat } from '../../stores/gameStore';
 import { MiniCardStack, PlayingCard } from './PlayingCard';
+
+// Action badge types
+export type LastActionType = 'check' | 'call' | 'raise' | 'fold' | 'declare' | null;
 
 interface PlayerSeatProps {
   seat: DisplaySeat;
@@ -10,7 +13,48 @@ interface PlayerSeatProps {
   onSeatClick?: () => void;
   isEmpty: boolean;
   hideEmptySeats?: boolean;
+  lastAction?: LastActionType;
+  lastActionAmount?: number;
 }
+
+// Action badge configuration
+const ACTION_BADGE_CONFIG: Record<string, { 
+  icon: React.ReactNode; 
+  bgColor: string; 
+  textColor: string;
+  label: string;
+}> = {
+  check: {
+    icon: <Check className="w-3 h-3" />,
+    bgColor: 'bg-emerald-500/90',
+    textColor: 'text-white',
+    label: 'CHECK',
+  },
+  call: {
+    icon: <Flag className="w-3 h-3" />,
+    bgColor: 'bg-blue-500/90',
+    textColor: 'text-white',
+    label: 'CALL',
+  },
+  raise: {
+    icon: <TrendingUp className="w-3 h-3" />,
+    bgColor: 'bg-amber-500/90',
+    textColor: 'text-slate-900',
+    label: 'RAISE',
+  },
+  fold: {
+    icon: <X className="w-3 h-3" />,
+    bgColor: 'bg-red-500/90',
+    textColor: 'text-white',
+    label: 'FOLD',
+  },
+  declare: {
+    icon: <Eye className="w-3 h-3" />,
+    bgColor: 'bg-purple-500/90',
+    textColor: 'text-white',
+    label: 'DECLARED',
+  },
+};
 
 export function PlayerSeat({
   seat,
@@ -20,6 +64,8 @@ export function PlayerSeat({
   onSeatClick,
   isEmpty,
   hideEmptySeats = false,
+  lastAction,
+  lastActionAmount,
 }: PlayerSeatProps) {
   if (isEmpty) {
     if (hideEmptySeats) return null;
@@ -41,11 +87,13 @@ export function PlayerSeat({
     );
   }
 
+  const actionConfig = lastAction ? ACTION_BADGE_CONFIG[lastAction] : null;
+
   return (
     <div
       className={`relative flex flex-col items-center p-3 rounded-xl transition-all duration-300 ${
         isCurrentPlayer
-          ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-2 border-amber-500 shadow-lg shadow-amber-500/20'
+          ? 'bg-gradient-to-br from-amber-500/20 to-amber-600/10 border-2 border-amber-500 shadow-lg shadow-amber-500/20 animate-pulse-border'
           : seat.folded || !seat.active
           ? 'bg-slate-900/60 border border-slate-700/50 opacity-50'
           : 'bg-slate-800/80 border border-slate-700'
@@ -66,18 +114,22 @@ export function PlayerSeat({
         </div>
       )}
 
+      {/* Action badge - shows last action taken */}
+      {actionConfig && !isCurrentPlayer && (
+        <div 
+          className={`absolute -top-1 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-0.5 ${actionConfig.bgColor} ${actionConfig.textColor} rounded-full text-[10px] font-bold shadow-lg animate-action-badge`}
+        >
+          {actionConfig.icon}
+          <span>
+            {actionConfig.label}
+            {lastAction === 'raise' && lastActionAmount ? ` $${lastActionAmount}` : ''}
+            {lastAction === 'call' && lastActionAmount ? ` $${lastActionAmount}` : ''}
+          </span>
+        </div>
+      )}
+
       {/* Player avatar and name */}
       <div className="flex items-center gap-2 mb-2">
-        {/* This can be used later for a profile pic area or something */}
-        {/* <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-            isMe
-              ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white'
-              : 'bg-gradient-to-br from-slate-600 to-slate-700 text-slate-300'
-          }`}
-        >
-          {seat.username ? seat.username.slice(0, 2).toUpperCase() : '?'}
-        </div> */}
         <div className="flex flex-col">
           <span className={`text-sm font-medium truncate max-w-[80px] ${isMe ? 'text-cyan-400' : 'text-slate-200'}`}>
             {isMe ? 'You' : (seat.username?.slice(0, 8) || 'Player')}
@@ -139,6 +191,35 @@ export function PlayerSeat({
           ${seat.bet}
         </div>
       )}
+
+      {/* CSS for animations */}
+      <style>{`
+        @keyframes pulse-border {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4), 0 10px 15px -3px rgba(245, 158, 11, 0.2);
+          }
+          50% {
+            box-shadow: 0 0 0 8px rgba(245, 158, 11, 0), 0 10px 15px -3px rgba(245, 158, 11, 0.2);
+          }
+        }
+        .animate-pulse-border {
+          animation: pulse-border 2s ease-in-out infinite;
+        }
+        
+        @keyframes action-badge-in {
+          0% {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-8px) scale(0.8);
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0) scale(1);
+          }
+        }
+        .animate-action-badge {
+          animation: action-badge-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

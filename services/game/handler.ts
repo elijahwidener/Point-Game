@@ -2,6 +2,7 @@ import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
 
 import {loadConnectionByConnectionID} from '../../shared/persistence/connectionStore';
 import {loadGameState} from '../../shared/persistence/gameState';
+import {logger} from '../../shared/utils/logger';
 import {applyPrivacyFiltering} from '../../shared/utils/privacyFilter';
 
 import {sendToConnection} from './broadcaster';
@@ -53,15 +54,16 @@ export async function handler(event: APIGatewayProxyEvent):
 
 async function handleResync(
     connectionID: string, tableID: string): Promise<void> {
+  const log = logger.child({tableID, connectionID, fn: 'handleResync'});
+
   const conn = await loadConnectionByConnectionID(connectionID);
   if (!conn) {
-    console.error(`Resync requested but connection ${connectionID} not found`);
+    log.error('Resync requested but connection not found');
     return;
   }
 
   const state = await loadGameState(tableID);
   if (!state) {
-    // No game state - send system message
     await sendToConnection(tableID, connectionID, {
       type: 'system',
       payload: {event: 'no_game', message: 'No active game at this table'}
@@ -72,6 +74,5 @@ async function handleResync(
   const displayState = applyPrivacyFiltering(state, conn.playerID);
   await sendToConnection(
       tableID, connectionID, {type: 'state', payload: displayState});
-
-  console.log(`Resync sent to ${connectionID} for table ${tableID}`);
+  log.info('Resync sent', {playerID: conn.playerID});
 }

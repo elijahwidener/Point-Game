@@ -98,7 +98,6 @@ export class TableWebSocket {
   }
 
   private handleMessage(event: MessageEvent): void {
-    console.log('Raw WebSocket message:', event.data);
     try {
       const message: WSMessage = JSON.parse(event.data);
 

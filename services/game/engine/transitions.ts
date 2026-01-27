@@ -72,9 +72,6 @@ async function awardPotToLastPlayer(state: GameState): Promise<GameState> {
   }
   winner.stack += totalWon;
 
-  console.log(`Seat ${winner.seat} (${winner.playerID}) wins ${
-      totalWon} chips (everyone else folded)`);
-
   // Hand is over
   return await transitionToInterround(state);
 }
@@ -235,9 +232,10 @@ async function transitionToInterround(state: GameState): Promise<GameState> {
     } catch (error) {
       log.error('Failed to process interround action', {
         type: action.type,
+        userID: action.userID,
+        actionSeq: action.actionSeq,
         error: (error as Error).message,
       });
-      throw error;
     }
     await popInterRoundAction(state.tableID);
     log.info('Action popped from queue', {type: action.type});

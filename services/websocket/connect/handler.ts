@@ -21,7 +21,6 @@ export async function handler(event: APIGatewayProxyEvent):
   if (!table) return {statusCode: 404, body: 'Table not found'};
 
   await registerConnection(tableID, connectionID, userID);
-  console.log(`Connection ${connectionID} registered for table ${tableID}`);
 
   return {statusCode: 200, body: 'Connected'};
 }

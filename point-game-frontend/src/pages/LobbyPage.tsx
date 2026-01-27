@@ -5,6 +5,7 @@ import { CreateTableModal } from '../components/modals/CreateTableModal';
 
 interface TableCardProps {
   table: GameTable;
+  isJoining?: boolean;
 }
 
 function TableCard({ table }: TableCardProps) {

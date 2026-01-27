@@ -142,13 +142,10 @@ export function useTableConnection(
   } = useGameStore();
 
   const handleStateUpdate = useCallback((state: DisplayState) => {
-    console.log('Received game state:', state);
     setGameState(state);
   }, [setGameState]);
 
   const handleActionReceived = useCallback((action: any) => {
-    console.log('Received action:', action);
-
     if (onActionReceived) {
       const entry = parseActionMessage(action);
       if (entry) {
@@ -159,7 +156,6 @@ export function useTableConnection(
   }, [onActionReceived]);
 
   const handleSystemMessage = useCallback((event: string, data?: any) => {
-    console.log('System message:', event, data);
     setSystemMessage(event, data);
 
     // Parse system messages for action log
@@ -175,13 +171,11 @@ export function useTableConnection(
     console.error('WebSocket error:', error);
     setError(error);
     if (error.code === 409 && wsRef.current) {
-      console.log('Conflict error received, requesting resync...');
       wsRef.current.requestResync();
     }
   }, [setError]);
 
   const handleStatusChange = useCallback((status: ConnectionStatus) => {
-    console.log('Connection status:', status);
     setConnectionStatus(status);
   }, [setConnectionStatus]);
 
