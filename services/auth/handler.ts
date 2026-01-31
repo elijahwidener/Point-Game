@@ -1,49 +1,62 @@
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
 
-import {getMe} from '../user/service';
-
-import {login, signup} from './service';
+import {getMe, syncUser} from './service';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
 };
+
+/**
+ * Extracts user info from Cognito claims (set by API Gateway Cognito
+ * Authorizer)
+ */
+function getUserFromClaims(event: APIGatewayProxyEvent):
+    {userID: string; username: string}|null {
+  const claims = event.requestContext.authorizer?.claims;
+  if (!claims?.sub) return null;
+
+  return {
+    userID: claims.sub,
+    username: claims['cognito:username'] || claims.sub,
+  };
+}
 
 export async function handler(event: APIGatewayProxyEvent):
     Promise<APIGatewayProxyResult> {
   try {
+    // All routes require valid Cognito token (enforced by API Gateway
+    // authorizer)
+    const user = getUserFromClaims(event);
+    if (!user) {
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({message: 'Unauthorized'}),
+      };
+    }
+
     switch (event.path) {
-      case '/auth/signup': {
-        if (!event.body) throw new Error('Invalid');
-
-        const {username, password} = JSON.parse(event.body);
-        if (!username || !password) {
-          throw new Error('Invalid');
+      case '/auth/sync': {
+        // POST /auth/sync - Create/sync user in DynamoDB after Cognito signup
+        if (event.httpMethod !== 'POST') {
+          return {
+            statusCode: 405,
+            headers: corsHeaders,
+            body: 'Method Not Allowed',
+          };
         }
-        const userID = await signup(username, password);
-        return {
-          statusCode: 201,
-          headers: corsHeaders,
-          body: JSON.stringify({userID}),
-        };
-      }
 
-      case '/auth/login': {
-        if (!event.body) throw new Error('Invalid');
-
-        const {username, password} = JSON.parse(event.body);
-        if (!username || !password) {
-          throw new Error('Invalid');
-        }
-        const userID = await login(username, password);
+        const syncedUser = await syncUser(user.userID, user.username);
         return {
           statusCode: 200,
           headers: corsHeaders,
-          body: JSON.stringify({userID}),
+          body: JSON.stringify(syncedUser),
         };
       }
 
       case '/me': {
+        // GET /me - Get current user profile
         if (event.httpMethod !== 'GET') {
           return {
             statusCode: 405,
@@ -52,18 +65,20 @@ export async function handler(event: APIGatewayProxyEvent):
           };
         }
 
-        const userID = event.queryStringParameters?.userID;
-        if (!userID) {
-          return {
-            statusCode: 400,
-            headers: corsHeaders,
-            body: 'Missing userID',
-          };
+        // Try to get user, sync if doesn't exist (handles first-time login)
+        let profile;
+        try {
+          profile = await getMe(user.userID);
+        } catch {
+          // User doesn't exist in DynamoDB yet - sync them
+          profile = await syncUser(user.userID, user.username);
         }
-        const me = await getMe(userID);
+
         return {
-          statusCode: 200, body: JSON.stringify(me), headers: corsHeaders,
-        }
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify(profile),
+        };
       }
 
       default:
@@ -74,8 +89,9 @@ export async function handler(event: APIGatewayProxyEvent):
         };
     }
   } catch (err: any) {
+    console.error('Auth handler error:', err);
     return {
-      statusCode: err.message === 'Invalid' ? 401 : 400,
+      statusCode: err.statusCode || 500,
       headers: corsHeaders,
       body: JSON.stringify({message: err.message}),
     };

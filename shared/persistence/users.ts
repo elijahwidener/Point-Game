@@ -28,7 +28,7 @@ export async function loadUser(userID: string):
 }
 
 export async function getAuthByUsername(username: string):
-    Promise<{userID: string; passwordHash: string;}|null> {
+    Promise<{userID: string;}|null> {
   const result = await ddb.send(new QueryCommand({
     TableName: TABLES.USERS,
     IndexName: 'UsernameIndex',
@@ -46,17 +46,14 @@ export async function getAuthByUsername(username: string):
 
   return {
     userID: user.userID,
-    passwordHash: user.passwordHash,
   };
 }
 
 export async function createUser(
-    userID: string, username: string, passwordHash: string,
-    balance: number): Promise<string> {
+    userID: string, username: string, balance: number): Promise<string> {
   const user: User = {
     userID,
     username,
-    passwordHash,
     balance,
   };
 

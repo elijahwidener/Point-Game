@@ -130,14 +130,13 @@ export function TablePage() {
   }, [gameState?.street, gameState?.handSeq]);
 
   const refreshUser = useCallback(async () => {
-    if (!user?.userID) return;
     try {
-      const updatedUser = await api.getMe(user.userID);
+      const updatedUser = await api.getMe();
       useAuthStore.getState().setUser(updatedUser);
     } catch (err) {
       console.error('Failed to refresh user:', err);
     }
-  }, [user?.userID]);
+  }, []);
 
   // Local UI state
   const [takeSeatModal, setTakeSeatModal] = useState<{ isOpen: boolean; seatIndex: number }>({
@@ -192,14 +191,14 @@ export function TablePage() {
 
   // Handle take seat confirmation
   const handleTakeSeat = useCallback(async (buyIn: number) => {
-    if (!tableID || !user?.userID) return;
+    if (!tableID) return;
 
     setIsLoading(true);
     setIsJoining(true);
     setError(null);
 
     try {
-      await api.sitDown(tableID, user.userID, buyIn);
+      await api.sitDown(tableID, buyIn);
       setTakeSeatModal({ isOpen: false, seatIndex: 0 });
       requestResync();
       await refreshUser();
@@ -209,7 +208,7 @@ export function TablePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tableID, user?.userID, requestResync, refreshUser]);
+  }, [tableID, requestResync, refreshUser]);
 
   // Game actions - update seat actions immediately for optimistic UI
   const handleFold = useCallback(() => {
@@ -249,50 +248,50 @@ export function TablePage() {
 
   // Owner controls
   const handleStartGame = useCallback(async () => {
-    if (!tableID || !user?.userID) return;
+    if (!tableID ) return;
     setIsLoading(true);
     try {
-      await api.startGame(tableID, user.userID);
+      await api.startGame(tableID);
       requestResync();
     } catch (err) {
       console.error('Failed to start game:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [tableID, user?.userID, requestResync]);
+  }, [tableID, requestResync]);
 
   const handleTogglePause = useCallback(async () => {
-    if (!tableID || !user?.userID) return;
+    if (!tableID ) return;
     setIsLoading(true);
     try {
-      await api.togglePause(tableID, user.userID);
+      await api.togglePause(tableID);
       requestResync();
     } catch (err) {
       console.error('Failed to toggle pause:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [tableID, user?.userID, requestResync]);
+  }, [tableID,requestResync]);
 
   const handleEndGame = useCallback(async () => {
-    if (!tableID || !user?.userID) return;
+    if (!tableID ) return;
     setIsLoading(true);
     try {
-      await api.endGame(tableID, user.userID);
+      await api.endGame(tableID);
       requestResync();
     } catch (err) {
       console.error('Failed to end game:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [tableID, user?.userID, requestResync]);
+  }, [tableID,  requestResync]);
 
   // Player controls
   const handleLeaveSeat = useCallback(async () => {
-    if (!tableID || !user?.userID) return;
+    if (!tableID ) return;
     setIsLoading(true);
     try {
-      await api.leaveSeat(tableID, user.userID);
+      await api.leaveSeat(tableID);
       requestResync();
       await refreshUser();
     } catch (err) {
@@ -300,20 +299,20 @@ export function TablePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tableID, user?.userID, requestResync, refreshUser]);
+  }, [tableID, requestResync, refreshUser]);
 
   const handleToggleSitOut = useCallback(async () => {
-    if (!tableID || !user?.userID) return;
+    if (!tableID ) return;
     setIsLoading(true);
     try {
-      await api.toggleAway(tableID, user.userID);
+      await api.toggleAway(tableID);
       requestResync();
     } catch (err) {
       console.error('Failed to toggle sit out:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [tableID, user?.userID, requestResync]);
+  }, [tableID, requestResync]);
 
   // Get table status from game state
   const tableStatus: 'Waiting' | 'Running' | 'Paused' | 'Ended' = 
@@ -341,7 +340,7 @@ export function TablePage() {
               
               <div>
                 <h1 className="text-lg font-bold text-white">
-                  {gameState?.tableName || `Table ${tableID?.slice(0, 8)}...`}
+                  {gameState?.tableName}
                 </h1>
                 <div className="flex items-center gap-3">
                   <ConnectionStatus status={connectionStatus} isJoining={isJoining} />

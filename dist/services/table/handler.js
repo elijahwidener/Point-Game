@@ -20,16 +20,24 @@ function error(statusCode, message) {
         body: JSON.stringify({ message }),
     };
 }
+function getUserIDFromClaims(event) {
+    const claims = event.requestContext.authorizer?.claims;
+    return claims?.sub || null;
+}
 async function handler(event) {
     try {
         const route = `${event.httpMethod} ${event.resource}`;
+        const userID = getUserIDFromClaims(event);
+        if (!userID) {
+            return error(401, 'Unauthorized - missing or invalid token');
+        }
         switch (route) {
             case 'POST /tables': {
                 if (!event.body)
                     throw new Error('Invalid');
-                const { userID, tableName, config } = JSON.parse(event.body);
-                if (!userID || !config || !tableName) {
-                    throw new Error('Invalid');
+                const { tableName, config } = JSON.parse(event.body);
+                if (!config || !tableName) {
+                    throw new Error('Invalid - missing tableName or config');
                 }
                 const tableID = await (0, service_1.createGameTable)(userID, tableName, config);
                 return success(201, tableID);
@@ -51,9 +59,8 @@ async function handler(event) {
                 if (!event.body)
                     throw new Error('Invalid');
                 const tableID = event.pathParameters?.tableID;
-                const { userID } = JSON.parse(event.body);
-                if (!userID || !tableID) {
-                    throw new Error('Invalid');
+                if (!tableID) {
+                    throw new Error('Invalid - missing tableID');
                 }
                 await (0, service_1.togglePause)(tableID, userID);
                 return success(204);
@@ -62,7 +69,10 @@ async function handler(event) {
                 if (!event.body)
                     throw new Error('Invalid');
                 const tableID = event.pathParameters?.tableID;
-                const { userID, buyIn } = JSON.parse(event.body);
+                const { buyIn } = JSON.parse(event.body);
+                if (!buyIn) {
+                    throw new Error('Invalid - missing buyIn');
+                }
                 await (0, service_1.takeSeat)(tableID, userID, buyIn);
                 return success(204);
             }
@@ -70,9 +80,8 @@ async function handler(event) {
                 if (!event.body)
                     throw new Error('Invalid');
                 const tableID = event.pathParameters?.tableID;
-                const { userID } = JSON.parse(event.body);
-                if (!userID || !tableID) {
-                    throw new Error('Invalid');
+                if (!tableID) {
+                    throw new Error('Invalid - missing tableID');
                 }
                 await (0, service_1.leaveSeat)(tableID, userID);
                 return success(204);
@@ -81,9 +90,8 @@ async function handler(event) {
                 if (!event.body)
                     throw new Error('Invalid');
                 const tableID = event.pathParameters?.tableID;
-                const { userID } = JSON.parse(event.body);
-                if (!userID || !tableID) {
-                    throw new Error('Invalid');
+                if (!tableID) {
+                    throw new Error('Invalid - missing tableID');
                 }
                 await (0, service_1.endGame)(tableID, userID); // finalizes ledger, removes game
                 // state, sets table status to ended
@@ -93,24 +101,25 @@ async function handler(event) {
                 if (!event.body)
                     throw new Error('Invalid');
                 const tableID = event.pathParameters?.tableID;
-                const { userID, config } = JSON.parse(event.body);
-                if (!userID || !tableID || !config) {
-                    throw new Error('Invalid');
+                const { config } = JSON.parse(event.body);
+                if (!tableID || !config) {
+                    throw new Error('Invalid - missing tableID or config');
                 }
                 await (0, service_1.updateConfig)(tableID, userID, config);
                 return success(204);
             }
             case 'POST /tables/{tableID}/start': {
                 const tableID = event.pathParameters?.tableID;
-                const { userID } = JSON.parse(event.body);
+                if (!tableID) {
+                    throw new Error('Invalid - missing tableID');
+                }
                 await (0, service_1.startGame)(tableID, userID);
                 return success(204);
             }
             case 'POST /tables/{tableID}/toggleAway': {
                 const tableID = event.pathParameters?.tableID;
-                const { userID } = JSON.parse(event.body);
-                if (!userID || !tableID) {
-                    throw new Error('Invalid');
+                if (!tableID) {
+                    throw new Error('Invalid - missing tableID');
                 }
                 await (0, service_1.toggleAway)(tableID, userID);
                 return success(204);

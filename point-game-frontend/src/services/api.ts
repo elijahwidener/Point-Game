@@ -1,6 +1,8 @@
+import {useAuthStore} from '../stores/authStore';
 import type {GameTable, TableConfig} from '../types/game';
 import type {AuthResponse, User} from '../types/user';
 import {API_BASE_URL} from '../utils/constants';
+
 
 class ApiService {
   private baseURL: string;
@@ -9,40 +11,38 @@ class ApiService {
     this.baseURL = API_BASE_URL;
   }
 
-  // Auth
-  async signup(username: string, password: string): Promise<AuthResponse> {
-    const response = await fetch(`${this.baseURL}/auth/signup`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({username, password}),
-    });
+  private async getAuthHeaders(): Promise<Record<string, string>> {
+    const token = await useAuthStore.getState().getIdToken();
+    if (!token) {
+      throw new Error('Not Authenticated');
+    } else {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+    }
+  }
 
+  async syncUser(): Promise<User> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseURL}/auth/sync`, {
+      method: 'POST',
+      headers,
+    });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Signup failed');
+      throw new Error(error.message || 'Sync failed');
     }
 
     return response.json();
   }
 
-  async login(username: string, password: string): Promise<AuthResponse> {
-    const response = await fetch(`${this.baseURL}/auth/login`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({username, password}),
+  async getMe(): Promise<User> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseURL}/me`, {
+      method: 'GET',
+      headers,
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Login failed');
-    }
-
-    return response.json();
-  }
-
-  async getMe(userID: string): Promise<User> {
-    const response = await fetch(`${this.baseURL}/me?userID=${userID}`);
-
     if (!response.ok) {
       throw new Error('Failed to fetch user');
     }
@@ -52,7 +52,11 @@ class ApiService {
 
   // Tables
   async getTables(): Promise<{tables: GameTable[]}> {
-    const response = await fetch(`${this.baseURL}/tables`);
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseURL}/tables`, {
+      method: 'GET',
+      headers,
+    });
 
     if (!response.ok) {
       throw new Error('Failed to fetch tables');
@@ -63,10 +67,11 @@ class ApiService {
 
   async createTable(userID: string, tableName: string, config: TableConfig):
       Promise<string> {
+    const headers = await this.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/tables`, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({userID, tableName, config}),
+      headers,
+      body: JSON.stringify({tableName, config}),
     });
 
     if (!response.ok) {
@@ -76,11 +81,12 @@ class ApiService {
     return response.json();  // Returns tableID
   }
 
-  async sitDown(tableID: string, userID: string, buyIn: number): Promise<void> {
+  async sitDown(tableID: string, buyIn: number): Promise<void> {
+    const headers = await this.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/tables/${tableID}/sit`, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({userID, buyIn}),
+      headers,
+      body: JSON.stringify({buyIn}),
     });
 
     if (!response.ok) {
@@ -89,11 +95,11 @@ class ApiService {
     }
   }
 
-  async startGame(tableID: string, userID: string): Promise<void> {
+  async startGame(tableID: string): Promise<void> {
+    const headers = await this.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/tables/${tableID}/start`, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({userID}),
+      headers,
     });
 
     if (!response.ok) {
@@ -101,12 +107,12 @@ class ApiService {
     }
   }
 
-  async togglePause(tableID: string, userID: string): Promise<void> {
+  async togglePause(tableID: string): Promise<void> {
+    const headers = await this.getAuthHeaders();
     const response =
         await fetch(`${this.baseURL}/tables/${tableID}/pause_unpause`, {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({userID}),
+          headers,
         });
 
     if (!response.ok) {
@@ -114,11 +120,11 @@ class ApiService {
     }
   }
 
-  async endGame(tableID: string, userID: string): Promise<void> {
+  async endGame(tableID: string): Promise<void> {
+    const headers = await this.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/tables/${tableID}/end`, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({userID}),
+      headers,
     });
 
     if (!response.ok) {
@@ -126,11 +132,11 @@ class ApiService {
     }
   }
 
-  async leaveSeat(tableID: string, userID: string): Promise<void> {
+  async leaveSeat(tableID: string): Promise<void> {
+    const headers = await this.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/tables/${tableID}/leave`, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({userID}),
+      headers,
     });
 
     if (!response.ok) {
@@ -139,12 +145,12 @@ class ApiService {
     }
   }
 
-  async toggleAway(tableID: string, userID: string): Promise<void> {
+  async toggleAway(tableID: string): Promise<void> {
+    const headers = await this.getAuthHeaders();
     const response =
         await fetch(`${this.baseURL}/tables/${tableID}/toggleAway`, {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({userID}),
+          headers,
         });
 
     if (!response.ok) {
@@ -154,8 +160,11 @@ class ApiService {
   }
 
   async getTable(tableID: string): Promise<GameTable> {
-    const response = await fetch(`${this.baseURL}/tables/${tableID}`);
-
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseURL}/tables/${tableID}`, {
+      method: 'GET',
+      headers,
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch table');
     }

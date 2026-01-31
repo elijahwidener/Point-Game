@@ -112,6 +112,5 @@ export interface InterRoundAction {
 export interface User {
   userID: string;
   username: string;
-  passwordHash: string;
   balance: number;
 }

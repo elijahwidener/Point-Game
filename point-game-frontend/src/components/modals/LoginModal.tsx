@@ -11,19 +11,28 @@ export function LoginModal(){
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+
+    const login = useAuthStore((state) => state.login);
     const setUser = useAuthStore((state) => state.setUser);
     const closeLoginModal = useUIStore((state) => state.closeLoginModal);
     const openSignupModal = useUIStore((state) => state.openSignupModal);
+    const isOpen = useUIStore((state) => state.isLoginModalOpen);
     
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+        setIsLoading(true);
         try {
-            const { userID } = await api.login(username, password);
-            const user = await api.getMe(userID);
+            await login(username, password);
+            const user = await api.getMe();
             setUser(user);
             closeLoginModal();
         } catch (err: any) {
             setError(err.message || 'Login failed');
+        } finally{
+            setIsLoading(false);
         }
     };
 
@@ -32,7 +41,6 @@ export function LoginModal(){
         openSignupModal();
     }
 
-    const isOpen = useUIStore((state) => state.isLoginModalOpen);
     if (!isOpen) return null;
 
     return (
@@ -64,6 +72,7 @@ export function LoginModal(){
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Username"
+                    disabled={isLoading}
                     className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
                 </input>
                 <input
@@ -71,12 +80,15 @@ export function LoginModal(){
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
+                    disabled={isLoading}
                     className="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
                 </input>
                 <button
                     type="submit"
-                    className="w-full bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold py-2 rounded">
-                        Lets Go
+                    disabled={isLoading}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-gray-900 font-semibold py-2 rounded disabled:opacity-50"
+                    >
+                    {isLoading ? 'Logging in...' : "Let's Go"}
                 </button>
                 <div className="text-sm text-gray-400 italic text-center">Don't have an account? {''}
                     <button

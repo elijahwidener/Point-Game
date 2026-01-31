@@ -1,5 +1,4 @@
 import {APIGatewayProxyEvent, APIGatewayProxyResult} from 'aws-lambda';
-import {table} from 'console';
 
 import {removeConnection} from '../../shared/persistence/connectionStore';
 
@@ -26,18 +25,28 @@ function error(statusCode: number, message: string): APIGatewayProxyResult {
   };
 }
 
+function getUserIDFromClaims(event: APIGatewayProxyEvent): string|null {
+  const claims = event.requestContext.authorizer?.claims;
+  return claims?.sub || null;
+}
+
 export async function handler(event: APIGatewayProxyEvent):
     Promise<APIGatewayProxyResult> {
   try {
     const route = `${event.httpMethod} ${event.resource}`;
 
+    const userID = getUserIDFromClaims(event);
+    if (!userID) {
+      return error(401, 'Unauthorized - missing or invalid token');
+    }
+
     switch (route) {
       case 'POST /tables': {
         if (!event.body) throw new Error('Invalid');
 
-        const {userID, tableName, config} = JSON.parse(event.body);
-        if (!userID || !config || !tableName) {
-          throw new Error('Invalid');
+        const {tableName, config} = JSON.parse(event.body);
+        if (!config || !tableName) {
+          throw new Error('Invalid - missing tableName or config');
         }
         const tableID = await createGameTable(userID, tableName, config);
 
@@ -62,9 +71,8 @@ export async function handler(event: APIGatewayProxyEvent):
       case 'POST /tables/{tableID}/pause_unpause': {
         if (!event.body) throw new Error('Invalid');
         const tableID = event.pathParameters?.tableID!;
-        const {userID} = JSON.parse(event.body);
-        if (!userID || !tableID) {
-          throw new Error('Invalid');
+        if (!tableID) {
+          throw new Error('Invalid - missing tableID');
         }
         await togglePause(tableID, userID);
         return success(204);
@@ -74,7 +82,10 @@ export async function handler(event: APIGatewayProxyEvent):
         if (!event.body) throw new Error('Invalid');
 
         const tableID = event.pathParameters?.tableID!;
-        const {userID, buyIn} = JSON.parse(event.body);
+        const {buyIn} = JSON.parse(event.body);
+        if (!buyIn) {
+          throw new Error('Invalid - missing buyIn');
+        }
 
         await takeSeat(tableID, userID, buyIn);
         return success(204);
@@ -83,9 +94,8 @@ export async function handler(event: APIGatewayProxyEvent):
       case 'POST /tables/{tableID}/leave': {
         if (!event.body) throw new Error('Invalid');
         const tableID = event.pathParameters?.tableID!;
-        const {userID} = JSON.parse(event.body);
-        if (!userID || !tableID) {
-          throw new Error('Invalid');
+        if (!tableID) {
+          throw new Error('Invalid - missing tableID');
         }
         await leaveSeat(tableID, userID);
         return success(204);
@@ -95,21 +105,21 @@ export async function handler(event: APIGatewayProxyEvent):
         if (!event.body) throw new Error('Invalid');
 
         const tableID = event.pathParameters?.tableID!;
-        const {userID} = JSON.parse(event.body);
-        if (!userID || !tableID) {
-          throw new Error('Invalid');
+        if (!tableID) {
+          throw new Error('Invalid - missing tableID');
         }
         await endGame(tableID, userID);  // finalizes ledger, removes game
                                          // state, sets table status to ended
         return success(204);
       }
+
       case 'PATCH /tables/{tableID}/update_config': {
         if (!event.body) throw new Error('Invalid');
 
         const tableID = event.pathParameters?.tableID!;
-        const {userID, config} = JSON.parse(event.body);
-        if (!userID || !tableID || !config) {
-          throw new Error('Invalid');
+        const {config} = JSON.parse(event.body);
+        if (!tableID || !config) {
+          throw new Error('Invalid - missing tableID or config');
         }
 
         await updateConfig(tableID, userID, config);
@@ -119,16 +129,17 @@ export async function handler(event: APIGatewayProxyEvent):
 
       case 'POST /tables/{tableID}/start': {
         const tableID = event.pathParameters?.tableID!;
-        const {userID} = JSON.parse(event.body!);
+        if (!tableID) {
+          throw new Error('Invalid - missing tableID');
+        }
         await startGame(tableID, userID);
         return success(204);
       }
 
       case 'POST /tables/{tableID}/toggleAway': {
         const tableID = event.pathParameters?.tableID;
-        const {userID} = JSON.parse(event.body!);
-        if (!userID || !tableID) {
-          throw new Error('Invalid');
+        if (!tableID) {
+          throw new Error('Invalid - missing tableID');
         }
         await toggleAway(tableID, userID);
         return success(204);

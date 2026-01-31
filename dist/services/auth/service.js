@@ -1,37 +1,36 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.signup = signup;
-exports.login = login;
-const crypto_1 = require("crypto");
+exports.syncUser = syncUser;
+exports.getMe = getMe;
 const users_1 = require("../../shared/persistence/users");
-async function signup(username, password) {
-    if (!username || !password) {
-        throw new Error('Invalid input');
-    }
-    const existing = await (0, users_1.getAuthByUsername)(username);
+const DEFAULT_STARTING_BALANCE = 1000;
+/**
+ * Syncs a Cognito user to DynamoDB. Called after successful Cognito signup
+ * or on first authenticated request if user doesn't exist yet.
+ *
+ * Returns the user record (existing or newly created).
+ */
+async function syncUser(userID, username) {
+    // Check if user already exists
+    const existing = await (0, users_1.loadUser)(userID);
     if (existing) {
-        throw new Error('Username already exists');
+        return existing;
     }
-    const userID = (0, crypto_1.randomUUID)();
-    const hash = (0, crypto_1.createHash)('sha256');
-    hash.update(password);
-    const hashedPassword = hash.digest('hex');
-    await (0, users_1.createUser)(userID, username, hashedPassword, 1000);
-    return userID;
+    // Create new user with starting balance
+    await (0, users_1.createUser)(userID, username, DEFAULT_STARTING_BALANCE);
+    return {
+        userID,
+        username,
+        balance: DEFAULT_STARTING_BALANCE,
+    };
 }
-async function login(username, password) {
-    if (!username || !password) {
-        throw new Error('Invalid input');
+/**
+ * Gets user profile. Throws if user doesn't exist.
+ */
+async function getMe(userID) {
+    const user = await (0, users_1.loadUser)(userID);
+    if (!user) {
+        throw new Error('User not found');
     }
-    const credentials = await (0, users_1.getAuthByUsername)(username);
-    if (!credentials) {
-        throw new Error('Invalid input');
-    }
-    const hash = (0, crypto_1.createHash)('sha256');
-    hash.update(password);
-    const passwordHash = hash.digest('hex');
-    if (credentials.passwordHash != passwordHash) {
-        throw new Error('Username and Password do not match!');
-    }
-    return credentials.userID;
+    return user;
 }

@@ -8,6 +8,8 @@ export async function handler(event: APIGatewayProxyEvent):
   const conn = await loadConnectionByConnectionID(connectionID);
   if (conn) {
     await removeConnection(conn.tableID, connectionID);
+    console.log(
+        `Connection ${connectionID} removed from table ${conn.tableID}`);
   }
 
   return {statusCode: 200, body: 'Disconnected'};

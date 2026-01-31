@@ -41,14 +41,12 @@ async function getAuthByUsername(username) {
     const user = (0, util_dynamodb_1.unmarshall)(result.Items[0]);
     return {
         userID: user.userID,
-        passwordHash: user.passwordHash,
     };
 }
-async function createUser(userID, username, passwordHash, balance) {
+async function createUser(userID, username, balance) {
     const user = {
         userID,
         username,
-        passwordHash,
         balance,
     };
     await client_1.ddb.send(new client_dynamodb_1.PutItemCommand({

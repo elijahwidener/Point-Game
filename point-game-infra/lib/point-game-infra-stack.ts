@@ -3,6 +3,7 @@ import {Annotations} from 'aws-cdk-lib';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import {WebSocketLambdaIntegration} from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
@@ -11,6 +12,62 @@ import {Construct} from 'constructs';
 export class PointGameInfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    // ========================================
+    // Cognito User Pool
+    // ========================================
+
+    const userPool = new cognito.UserPool(this, 'PointGameUserPool', {
+      userPoolName: 'PointGameUserPool',
+
+      signInAliases: {
+        username: true,
+        email: true,
+      },
+
+      selfSignUpEnabled: true,
+
+      passwordPolicy: {
+        minLength: 8,
+        requireLowercase: true,
+        requireDigits: true,
+        requireSymbols: false,
+        requireUppercase: true,
+      },
+
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+
+      autoVerify: {
+        email: true,
+      },
+
+      standardAttributes: {
+        preferredUsername: {
+          required: false,
+          mutable: true,
+        },
+      },
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const userPoolClient =
+        new cognito.UserPoolClient(this, 'PointGameUserPoolClient', {
+          userPool,
+          userPoolClientName: 'PointGameWebClient',
+
+          authFlows: {
+            userSrp: true,
+            userPassword: true,
+          },
+
+          accessTokenValidity: cdk.Duration.hours(2),
+          idTokenValidity: cdk.Duration.hours(2),
+          refreshTokenValidity: cdk.Duration.days(30),
+
+          preventUserExistenceErrors: true,
+
+          generateSecret: false,
+        });
 
     // ========================================
     // DynamoDB Tables
@@ -141,12 +198,19 @@ export class PointGameInfraStack extends cdk.Stack {
     // Lambda Functions
     // ========================================
 
+    const cognitoEnvVars = {
+      COGNITO_USER_POOL_ID: userPool.userPoolId,
+      COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
+      COGNITO_REGION: this.region,
+    };
+
     const authLambda = new lambda.Function(this, 'AuthLambda', {
       functionName: 'AuthLambda',
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'services/auth/index.handler',
       code: lambda.Code.fromAsset('../dist'),
       timeout: cdk.Duration.seconds(10),
+      environment: cognitoEnvVars,
     });
 
     const tableLambda = new lambda.Function(this, 'TableLambda', {
@@ -155,6 +219,7 @@ export class PointGameInfraStack extends cdk.Stack {
       handler: 'services/table/index.handler',
       code: lambda.Code.fromAsset('../dist'),
       timeout: cdk.Duration.seconds(10),
+      environment: cognitoEnvVars,
     });
 
     const gameLambda = new lambda.Function(this, 'GameLambda', {
@@ -163,6 +228,7 @@ export class PointGameInfraStack extends cdk.Stack {
       handler: 'services/game/index.handler',
       code: lambda.Code.fromAsset('../dist'),
       timeout: cdk.Duration.seconds(10),
+      environment: cognitoEnvVars,
     });
 
     const connectLambda = new lambda.Function(this, 'ConnectLambda', {
@@ -171,6 +237,7 @@ export class PointGameInfraStack extends cdk.Stack {
       handler: 'services/websocket/connect/index.handler',
       code: lambda.Code.fromAsset('../dist'),
       timeout: cdk.Duration.seconds(10),
+      environment: cognitoEnvVars,
     });
 
     const disconnectLambda = new lambda.Function(this, 'DisconnectLambda', {
@@ -179,6 +246,7 @@ export class PointGameInfraStack extends cdk.Stack {
       handler: 'services/websocket/disconnect/index.handler',
       code: lambda.Code.fromAsset('../dist'),
       timeout: cdk.Duration.seconds(10),
+      environment: cognitoEnvVars,
     });
 
     // ========================================
@@ -206,6 +274,8 @@ export class PointGameInfraStack extends cdk.Stack {
     gameStateTable.grantReadData(connectLambda);
     connectionStore.grantReadWriteData(disconnectLambda);
 
+    usersTable.grantReadWriteData(connectLambda);
+
     // ========================================
     // REST API Gateway
     // ========================================
@@ -224,38 +294,76 @@ export class PointGameInfraStack extends cdk.Stack {
       },
     });
 
-    // Auth routes
+    // ========================================
+    // Cognito Authorizer for API Gateway (NEW)
+    // ========================================
+
+    const cognitoAuthorizer =
+        new apigateway.CognitoUserPoolsAuthorizer(this, 'PointGameAuthorizer', {
+          cognitoUserPools: [userPool],
+          authorizerName: 'PointGameCognitoAuthorizer',
+          identitySource: 'method.request.header.Authorization',
+        });
+
+    // Helper for protected routes
+    const protectedMethodOptions: apigateway.MethodOptions = {
+      authorizer: cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    };
+
+
     const auth = api.root.addResource('auth');
-    auth.addResource('signup').addMethod(
-        'POST', new apigateway.LambdaIntegration(authLambda));
-    auth.addResource('login').addMethod(
-        'POST', new apigateway.LambdaIntegration(authLambda));
+
+    // POST /auth/sync - Create/sync user in DynamoDB after Cognito signup
+    // Called by frontend after successful Cognito signup
+    auth.addResource('sync').addMethod(
+        'POST', new apigateway.LambdaIntegration(authLambda),
+        protectedMethodOptions  // Requires valid Cognito token
+    );
+
+    // GET /me - Get current user profile (PROTECTED)
     api.root.addResource('me').addMethod(
-        'GET', new apigateway.LambdaIntegration(authLambda));
+        'GET', new apigateway.LambdaIntegration(authLambda),
+        protectedMethodOptions  // Requires valid Cognito token
+    );
 
     // Table routes
     const tables = api.root.addResource('tables');
-    tables.addMethod('GET', new apigateway.LambdaIntegration(tableLambda));
-    tables.addMethod('POST', new apigateway.LambdaIntegration(tableLambda));
+    tables.addMethod(
+        'GET', new apigateway.LambdaIntegration(tableLambda),
+        protectedMethodOptions);
+    tables.addMethod(
+        'POST', new apigateway.LambdaIntegration(tableLambda),
+        protectedMethodOptions);
 
     const tableByID = tables.addResource('{tableID}');
-    tableByID.addMethod('GET', new apigateway.LambdaIntegration(tableLambda));
-
+    tableByID.addMethod(
+        'GET', new apigateway.LambdaIntegration(tableLambda),
+        protectedMethodOptions);
 
     tableByID.addResource('leave').addMethod(
-        'POST', new apigateway.LambdaIntegration(tableLambda));
+        'POST', new apigateway.LambdaIntegration(tableLambda),
+        protectedMethodOptions);
     tableByID.addResource('sit').addMethod(
-        'POST', new apigateway.LambdaIntegration(tableLambda));
+        'POST', new apigateway.LambdaIntegration(tableLambda),
+        protectedMethodOptions);
     tableByID.addResource('pause_unpause')
-        .addMethod('POST', new apigateway.LambdaIntegration(tableLambda));
+        .addMethod(
+            'POST', new apigateway.LambdaIntegration(tableLambda),
+            protectedMethodOptions);
     tableByID.addResource('end').addMethod(
-        'POST', new apigateway.LambdaIntegration(tableLambda));
+        'POST', new apigateway.LambdaIntegration(tableLambda),
+        protectedMethodOptions);
     tableByID.addResource('config').addMethod(
-        'PATCH', new apigateway.LambdaIntegration(tableLambda));
+        'PATCH', new apigateway.LambdaIntegration(tableLambda),
+        protectedMethodOptions);
     tableByID.addResource('start').addMethod(
-        'POST', new apigateway.LambdaIntegration(tableLambda));
+        'POST', new apigateway.LambdaIntegration(tableLambda),
+        protectedMethodOptions);
     tableByID.addResource('toggleAway')
-        .addMethod('POST', new apigateway.LambdaIntegration(tableLambda));
+        .addMethod(
+            'POST', new apigateway.LambdaIntegration(tableLambda),
+            protectedMethodOptions);
 
     // ========================================
     // WebSocket API Gateway
@@ -294,6 +402,10 @@ export class PointGameInfraStack extends cdk.Stack {
         `https://${webSocketApi.apiId}.execute-api.${
             this.region}.amazonaws.com/${stage.stageName}`);
 
+    // ========================================
+    // Outputs
+    // ========================================
+
     new cdk.CfnOutput(this, 'RestApiUrl', {
       value: api.url,
       description: 'REST API Gateway URL',
@@ -303,6 +415,22 @@ export class PointGameInfraStack extends cdk.Stack {
       value: `wss://${webSocketApi.apiId}.execute-api.${
           this.region}.amazonaws.com/${stage.stageName}`,
       description: 'WebSocket API Gateway URL',
+    });
+
+    // NEW: Cognito outputs for frontend configuration
+    new cdk.CfnOutput(this, 'CognitoUserPoolId', {
+      value: userPool.userPoolId,
+      description: 'Cognito User Pool ID',
+    });
+
+    new cdk.CfnOutput(this, 'CognitoUserPoolClientId', {
+      value: userPoolClient.userPoolClientId,
+      description: 'Cognito User Pool Client ID',
+    });
+
+    new cdk.CfnOutput(this, 'CognitoRegion', {
+      value: this.region,
+      description: 'Cognito Region',
     });
   }
 }

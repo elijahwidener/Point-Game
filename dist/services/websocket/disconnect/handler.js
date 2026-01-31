@@ -7,6 +7,7 @@ async function handler(event) {
     const conn = await (0, connectionStore_1.loadConnectionByConnectionID)(connectionID);
     if (conn) {
         await (0, connectionStore_1.removeConnection)(conn.tableID, connectionID);
+        console.log(`Connection ${connectionID} removed from table ${conn.tableID}`);
     }
     return { statusCode: 200, body: 'Disconnected' };
 }

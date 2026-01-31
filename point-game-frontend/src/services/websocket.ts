@@ -1,4 +1,4 @@
-
+import {useAuthStore} from '../stores/authStore';
 import {WS_URL} from '../utils/constants';
 
 export type ConnectionStatus =
@@ -35,7 +35,7 @@ export class TableWebSocket {
     this.callbacks = callbacks;
   }
 
-  connect(): void {
+  async connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) {
       console.log('Websocket already connected');
       return;
@@ -44,8 +44,20 @@ export class TableWebSocket {
     this.intentionalClose = false;
     this.callbacks.onStatusChange('connecting');
 
-    const url = `${WS_URL}?tableID=${this.tableID}&userID=${this.userID}`;
-    console.log('Connecting to WebSocket:', url);
+    // Get fresh token for connection
+    const token = await useAuthStore.getState().getIdToken();
+    if (!token) {
+      console.error('No auth token available');
+      this.callbacks.onError({code: 401, message: 'Not authenticated'});
+      this.callbacks.onStatusChange('disconnected');
+      return;
+    }
+
+    const url =
+        `${WS_URL}?tableID=${this.tableID}&token=${encodeURIComponent(token)}`;
+    console.log(
+        'Connecting to WebSocket:',
+        `${WS_URL}?tableID=${this.tableID}&token=<redacted>`);
 
     this.ws = new WebSocket(url);
 
@@ -63,7 +75,7 @@ export class TableWebSocket {
       this.ws = null;
     }
 
-    this.callbacks.onStatusChange('disconnected')
+    this.callbacks.onStatusChange('disconnected');
   }
 
   sendAction(action: string, payload?: any): void {
@@ -88,7 +100,6 @@ export class TableWebSocket {
       console.warn('Cannot send message - WebSocket not connected');
     }
   }
-
 
   private handleOpen(): void {
     console.log('WebSocket connected');
@@ -126,19 +137,11 @@ export class TableWebSocket {
     }
   }
 
-  /**
-   * Always accepts and updates the sequence number
-   * @param state The true game state
-   */
   private handleStateMessage(state: any): void {
     this.lastKnownSeq = state.gameSeq;
     this.callbacks.onStateUpdate(state);
   }
 
-  /**
-   * Verifies the action seq, requests resync if stale. Processes action
-   * otherwise
-   */
   private handleActionMessage(actionPayLoad: any): void {
     const {gameSeq} = actionPayLoad;
 
@@ -153,13 +156,19 @@ export class TableWebSocket {
     this.callbacks.onActionReceived(actionPayLoad);
   }
 
-  /**
-   * closes ws. Attempts reconnects is closure was not intentional
-   */
   private handleClose(event: CloseEvent): void {
     console.log('WebSocket closed:', event.code, event.reason);
     this.ws = null;
+
     if (this.intentionalClose) {
+      this.callbacks.onStatusChange('disconnected');
+      return;
+    }
+
+    if (event.code === 401 || event.reason?.includes('token')) {
+      console.error('WebSocket auth failed');
+      this.callbacks.onError(
+          {code: 401, message: 'Authentication failed. Please log in again.'});
       this.callbacks.onStatusChange('disconnected');
       return;
     }
@@ -175,7 +184,7 @@ export class TableWebSocket {
 
       setTimeout(() => {
         if (!this.intentionalClose) {
-          this.connect();
+          this.connect();  // Will fetch fresh token on reconnect
         }
       }, delay);
     } else {
