@@ -23,15 +23,13 @@ const RECONNECT_DELAYS = [1000, 2000, 4000, 8000, 16000];
 export class TableWebSocket {
   private ws: WebSocket|null = null;
   private tableID: string;
-  private userID: string;
   private callbacks: WebSocketCallbacks;
   private reconnectAttempts = 0;
   private intentionalClose = false;
   private lastKnownSeq: number|null = null;
 
-  constructor(tableID: string, userID: string, callbacks: WebSocketCallbacks) {
+  constructor(tableID: string, callbacks: WebSocketCallbacks) {
     this.tableID = tableID;
-    this.userID = userID;
     this.callbacks = callbacks;
   }
 
@@ -79,13 +77,7 @@ export class TableWebSocket {
   }
 
   sendAction(action: string, payload?: any): void {
-    this.send({
-      type: 'player_action',
-      tableID: this.tableID,
-      userID: this.userID,
-      action,
-      payload
-    });
+    this.send({type: 'player_action', tableID: this.tableID, action, payload});
   }
 
   requestResync(): void {
@@ -201,7 +193,6 @@ export class TableWebSocket {
 }
 
 export function createTableConnection(
-    tableID: string, userID: string,
-    callbacks: WebSocketCallbacks): TableWebSocket {
-  return new TableWebSocket(tableID, userID, callbacks);
+    tableID: string, callbacks: WebSocketCallbacks): TableWebSocket {
+  return new TableWebSocket(tableID, callbacks);
 }

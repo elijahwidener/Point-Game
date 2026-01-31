@@ -14,10 +14,15 @@ export async function handler(event: APIGatewayProxyEvent):
   const message = JSON.parse(event.body || '{}');
 
   try {
+    const conn = await loadConnectionByConnectionID(connectionID);
+    if (!conn) {
+      return {statusCode: 401, body: 'Connection not authenticated'};
+    }
+
     switch (message.type) {
       case 'player_action':
         await processPlayerAction(
-            message.tableID, message.userID, message.action, message.payload);
+            message.tableID, conn.playerID, message.action, message.payload);
         break;
 
       case 'resync':

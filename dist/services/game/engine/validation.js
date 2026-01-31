@@ -71,10 +71,10 @@ function validateRaise(state, seat, payload) {
     }
     const totalBet = seat.bet + raiseAmount;
     if (totalBet <= state.currentBet) {
-        throw new errors_1.BadRequestError('Raise must be higher than current bet');
+        throw new errors_1.BadRequestError(`Raise must be higher than current bet`);
     }
     if (raiseAmount < state.minRaise && raiseAmount < seat.stack) {
-        throw new errors_1.BadRequestError('Raise must be at least ${state.minRaise}');
+        throw new errors_1.BadRequestError(`Raise must be at least ${state.minRaise}`);
     }
     if (raiseAmount > seat.stack) {
         throw new errors_1.BadRequestError('Insufficient chips');

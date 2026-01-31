@@ -184,7 +184,7 @@ export function useTableConnection(
       () => {
         if (!tableID || !userID) return;
 
-        const ws = createTableConnection(tableID, userID, {
+        const ws = createTableConnection(tableID, {
           onStateUpdate: handleStateUpdate,
           onActionReceived: handleActionReceived,
           onSystemMessage: handleSystemMessage,

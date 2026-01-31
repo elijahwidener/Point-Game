@@ -40,15 +40,14 @@ export const useAuthStore = create<AuthState>()(persist(
             new CognitoUserAttribute({Name: 'email', Value: email}),
           ];
 
-          userPool.signUp(
-              username, password, attributeList, [], (err, result) => {
-                if (err) {
-                  reject(new Error(err.message || 'Signup failed'));
-                  return;
-                }
-                // User created but needs confirmation
-                resolve();
-              });
+          userPool.signUp(username, password, attributeList, [], (err) => {
+            if (err) {
+              reject(new Error(err.message || 'Signup failed'));
+              return;
+            }
+            // User created but needs confirmation
+            resolve();
+          });
         });
       },
 
@@ -59,7 +58,7 @@ export const useAuthStore = create<AuthState>()(persist(
             Pool: userPool,
           });
 
-          cognitoUser.confirmRegistration(code, true, (err, result) => {
+          cognitoUser.confirmRegistration(code, true, (err) => {
             if (err) {
               reject(new Error(err.message || 'Confirmation failed'));
               return;

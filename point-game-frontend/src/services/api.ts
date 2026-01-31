@@ -1,6 +1,6 @@
 import {useAuthStore} from '../stores/authStore';
 import type {GameTable, TableConfig} from '../types/game';
-import type {AuthResponse, User} from '../types/user';
+import type {User} from '../types/user';
 import {API_BASE_URL} from '../utils/constants';
 
 
@@ -65,8 +65,7 @@ class ApiService {
     return response.json();
   }
 
-  async createTable(userID: string, tableName: string, config: TableConfig):
-      Promise<string> {
+  async createTable(tableName: string, config: TableConfig): Promise<string> {
     const headers = await this.getAuthHeaders();
     const response = await fetch(`${this.baseURL}/tables`, {
       method: 'POST',

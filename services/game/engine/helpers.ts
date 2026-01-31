@@ -56,7 +56,7 @@ export function findNextActiveSeat(
     attempts++;
   }
 
-  throw new Error('No active players found');
+  return -1;
 }
 
 export function postBlinds(state: GameState): void {

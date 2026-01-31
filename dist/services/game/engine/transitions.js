@@ -123,7 +123,11 @@ async function transitionToFlop(state) {
     state.boardCards.push(...newCards);
     await (0, helpers_1.forceDiscards)(state);
     (0, helpers_1.resetActedFlags)(state);
-    state.currentPlayerSeat = (0, helpers_1.findNextActiveSeat)(state, state.button);
+    const nextSeat = (0, helpers_1.findNextActiveSeat)(state, state.button);
+    if (nextSeat !== -1) {
+        // This means everyone all in, isActionClosed will push us to showdown
+        state.currentPlayerSeat = nextSeat;
+    }
     return state;
 }
 async function transitionToTurn(state) {
@@ -136,7 +140,10 @@ async function transitionToTurn(state) {
     }
     await (0, helpers_1.forceDiscards)(state);
     (0, helpers_1.resetActedFlags)(state);
-    state.currentPlayerSeat = (0, helpers_1.findNextActiveSeat)(state, state.button);
+    const nextSeat = (0, helpers_1.findNextActiveSeat)(state, state.button);
+    if (nextSeat !== -1) {
+        state.currentPlayerSeat = nextSeat;
+    }
     return state;
 }
 async function transitionToRiver(state) {
@@ -149,7 +156,10 @@ async function transitionToRiver(state) {
     }
     await (0, helpers_1.forceDiscards)(state);
     (0, helpers_1.resetActedFlags)(state);
-    state.currentPlayerSeat = (0, helpers_1.findNextActiveSeat)(state, state.button);
+    const nextSeat = (0, helpers_1.findNextActiveSeat)(state, state.button);
+    if (nextSeat !== -1) {
+        state.currentPlayerSeat = nextSeat;
+    }
     return state;
 }
 function transitionToDeclare(state) {

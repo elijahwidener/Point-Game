@@ -40,7 +40,7 @@ export function CreateTableModal( {isOpen, onClose, onTableCreated}: CreateTable
         setLoading(true);
         try {
             const config = {ante, smallBlind, bigBlind, maxPlayers};
-            const tableID = await api.createTable(user.userID, tableName, config);
+            const tableID = await api.createTable(tableName, config);
 
             // Reset form
             setTableName('');

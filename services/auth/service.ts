@@ -1,6 +1,6 @@
 import {createUser, loadUser} from '../../shared/persistence/users';
 
-const DEFAULT_STARTING_BALANCE = 1000;
+const DEFAULT_STARTING_BALANCE = 10000;
 
 /**
  * Syncs a Cognito user to DynamoDB. Called after successful Cognito signup

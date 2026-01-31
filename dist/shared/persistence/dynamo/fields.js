@@ -7,7 +7,6 @@ exports.FIELDS = {
     USERS: {
         USER_ID: 'userID',
         USERNAME: 'username',
-        PASSWORD_HASH: 'passwordHash',
         BALANCE: 'balance',
     },
     GAME_TABLES: {

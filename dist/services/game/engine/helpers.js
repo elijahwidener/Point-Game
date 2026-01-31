@@ -53,7 +53,7 @@ function findNextActiveSeat(state, startSeat) {
         seat = (seat + 1) % state.seats.length;
         attempts++;
     }
-    throw new Error('No active players found');
+    return -1;
 }
 function postBlinds(state) {
     // Find small blind and big blind positions

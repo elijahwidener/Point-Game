@@ -88,11 +88,11 @@ function validateRaise(state: GameState, seat: any, payload: any): void {
   const totalBet = seat.bet + raiseAmount;
 
   if (totalBet <= state.currentBet) {
-    throw new BadRequestError('Raise must be higher than current bet');
+    throw new BadRequestError(`Raise must be higher than current bet`);
   }
 
   if (raiseAmount < state.minRaise && raiseAmount < seat.stack) {
-    throw new BadRequestError('Raise must be at least ${state.minRaise}');
+    throw new BadRequestError(`Raise must be at least ${state.minRaise}`);
   }
 
   if (raiseAmount > seat.stack) {

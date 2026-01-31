@@ -142,8 +142,11 @@ export async function transitionToFlop(state: GameState): Promise<GameState> {
 
   await forceDiscards(state);
   resetActedFlags(state);
-  state.currentPlayerSeat = findNextActiveSeat(state, state.button);
-
+  const nextSeat = findNextActiveSeat(state, state.button);
+  if (nextSeat !== -1) {
+    // This means everyone all in, isActionClosed will push us to showdown
+    state.currentPlayerSeat = nextSeat;
+  }
   return state;
 }
 
@@ -159,8 +162,10 @@ export async function transitionToTurn(state: GameState): Promise<GameState> {
 
   await forceDiscards(state);
   resetActedFlags(state);
-  state.currentPlayerSeat = findNextActiveSeat(state, state.button);
-
+  const nextSeat = findNextActiveSeat(state, state.button);
+  if (nextSeat !== -1) {
+    state.currentPlayerSeat = nextSeat;
+  }
   return state;
 }
 
@@ -176,8 +181,10 @@ export async function transitionToRiver(state: GameState): Promise<GameState> {
 
   await forceDiscards(state);
   resetActedFlags(state);
-  state.currentPlayerSeat = findNextActiveSeat(state, state.button);
-
+  const nextSeat = findNextActiveSeat(state, state.button);
+  if (nextSeat !== -1) {
+    state.currentPlayerSeat = nextSeat;
+  }
   return state;
 }
 

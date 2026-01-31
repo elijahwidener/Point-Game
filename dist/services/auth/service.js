@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.syncUser = syncUser;
 exports.getMe = getMe;
 const users_1 = require("../../shared/persistence/users");
-const DEFAULT_STARTING_BALANCE = 1000;
+const DEFAULT_STARTING_BALANCE = 10000;
 /**
  * Syncs a Cognito user to DynamoDB. Called after successful Cognito signup
  * or on first authenticated request if user doesn't exist yet.

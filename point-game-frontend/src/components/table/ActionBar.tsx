@@ -5,9 +5,10 @@ interface ActionBarProps {
   isMyTurn: boolean;
   canCheck: boolean;
   amountToCall: number;
-  currentBet: number;
   minRaise: number;
   myStack: number;
+  pot: number;
+  smallBlind: number;
   onFold: () => void;
   onCheck: () => void;
   onCall: () => void;
@@ -19,16 +20,17 @@ export function ActionBar({
   isMyTurn,
   canCheck,
   amountToCall,
-  currentBet,
   minRaise,
   myStack,
+  pot,
+  smallBlind,
   onFold,
   onCheck,
   onCall,
   onRaise,
   street,
 }: ActionBarProps) {
-  const effectiveMinRaise = Math.min(minRaise, myStack + amountToCall);
+  const effectiveMinRaise = Math.min(minRaise, myStack);
   const maxRaise = myStack;
 
   const [raiseAmount, setRaiseAmount] = useState(effectiveMinRaise);
@@ -63,10 +65,10 @@ export function ActionBar({
   };
   const presetAmounts = [
     { label: 'Min', value: effectiveMinRaise },
-    { label: '½ Pot', value: Math.floor((currentBet + amountToCall) * 0.5 + amountToCall) },
-    { label: 'Pot', value: currentBet + amountToCall },
+    { label: '½ Pot', value: Math.floor(pot * 0.5 ) },
+    { label: 'Pot', value: pot },
     { label: 'All-In', value: maxRaise },
-  ].filter(p => p.value <= maxRaise && p.value >= effectiveMinRaise);
+  ];
 
   return (
     <div className="fixed bottom-6 left-100 right-0 pt-8 pb-6 px-4 z-30">
@@ -94,7 +96,7 @@ export function ActionBar({
             {/* Slider and input */}
             <div className="flex items-center gap-4">
               <button
-                onClick={() => handleRaiseChange(raiseAmount - (minRaise - currentBet))}
+                onClick={() => handleRaiseChange(raiseAmount - smallBlind)}
                 className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300"
                 disabled={raiseAmount <= effectiveMinRaise}
               >
@@ -119,7 +121,7 @@ export function ActionBar({
               </div>
 
               <button
-                onClick={() => handleRaiseChange(raiseAmount + (minRaise - currentBet))}
+                onClick={() => handleRaiseChange(raiseAmount + smallBlind)}
                 className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300"
                 disabled={raiseAmount >= maxRaise}
               >
@@ -134,7 +136,7 @@ export function ActionBar({
                 <input
                   type="number"
                   value={raiseAmount}
-                  onChange={(e) => setRaiseAmount(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setRaiseAmount(parseInt(e.target.value))}
                   className="w-full pl-7 pr-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white font-mono text-lg focus:border-amber-500 focus:outline-none"
                   min={effectiveMinRaise}
                   max={maxRaise}

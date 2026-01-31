@@ -418,7 +418,8 @@ export function TablePage() {
           isMyTurn={isMyTurn}
           canCheck={canCheck}
           amountToCall={amountToCall}
-          currentBet={currentBet}
+          pot={gameState?.pots.reduce((sum, pot) => sum + pot.amount, 0) || 0}
+          smallBlind={gameState?.config.smallBlind || 1}
           minRaise={gameState?.minRaise || 0}
           myStack={mySeat?.stack || 0}
           onFold={handleFold}

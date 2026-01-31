@@ -11,9 +11,13 @@ async function handler(event) {
     const connectionID = event.requestContext.connectionId;
     const message = JSON.parse(event.body || '{}');
     try {
+        const conn = await (0, connectionStore_1.loadConnectionByConnectionID)(connectionID);
+        if (!conn) {
+            return { statusCode: 401, body: 'Connection not authenticated' };
+        }
         switch (message.type) {
             case 'player_action':
-                await (0, engine_1.processPlayerAction)(message.tableID, message.userID, message.action, message.payload);
+                await (0, engine_1.processPlayerAction)(message.tableID, conn.playerID, message.action, message.payload);
                 break;
             case 'resync':
                 await handleResync(connectionID, message.tableID);

@@ -84,7 +84,13 @@ async function advanceGameState(tableID, currentState) {
         }
         const actionStreets = ['Preflop', 'Flop', 'Turn', 'River', 'Declare'];
         if (actionStreets.includes(state.street)) {
-            break;
+            if (!(0, actions_1.isActionClosed)(state)) {
+                break;
+            }
+            else {
+                // action is already closed (everyone all-in), keep advancing
+                continue;
+            }
         }
     }
 }
