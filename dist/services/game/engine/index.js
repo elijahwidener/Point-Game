@@ -18,17 +18,10 @@ const corsHeaders = {
 async function processPlayerAction(tableID, playerID, action, payload) {
     const state = await (0, gameState_1.loadGameState)(tableID);
     const log = logger_1.logger.child({ tableID, fn: 'processPlayerAction' });
-    log.info('Player action received', { playerID, action, payload });
     if (!state) {
         log.error('Game state not found');
         throw new errors_1.NotFoundError('Game not found');
     }
-    log.info('Current state', {
-        street: state.street,
-        gameSeq: state.gameSeq,
-        handSeq: state.handSeq,
-        currentPlayerSeat: state.currentPlayerSeat,
-    });
     (0, validation_1.validateAction)(state, playerID, action, payload);
     const seat = state.seats.find(s => s.playerID === playerID);
     const username = seat?.username || playerID;
@@ -71,7 +64,6 @@ async function advanceGameState(tableID, currentState) {
         try {
             const newGameSeq = await (0, gameState_1.updateGameState)(tableID, state, state.gameSeq);
             state.gameSeq = newGameSeq;
-            log.info('State persisted', { newGameSeq });
         }
         catch (error) {
             log.error('State conflict during game action', { error: error.message });
@@ -92,7 +84,6 @@ async function advanceGameState(tableID, currentState) {
         }
         const actionStreets = ['Preflop', 'Flop', 'Turn', 'River', 'Declare'];
         if (actionStreets.includes(state.street)) {
-            log.info('Reached action street, stopping advancement');
             break;
         }
     }

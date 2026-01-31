@@ -22,19 +22,11 @@ export async function processPlayerAction(
     payload: any): Promise<void> {
   const state = await loadGameState(tableID);
   const log = logger.child({tableID, fn: 'processPlayerAction'});
-  log.info('Player action received', {playerID, action, payload});
 
   if (!state) {
     log.error('Game state not found');
     throw new NotFoundError('Game not found');
   }
-
-  log.info('Current state', {
-    street: state.street,
-    gameSeq: state.gameSeq,
-    handSeq: state.handSeq,
-    currentPlayerSeat: state.currentPlayerSeat,
-  });
 
   validateAction(state, playerID, action, payload);
 
@@ -92,7 +84,6 @@ export async function advanceGameState(
     try {
       const newGameSeq = await updateGameState(tableID, state, state.gameSeq);
       state.gameSeq = newGameSeq;
-      log.info('State persisted', {newGameSeq});
     } catch (error) {
       log.error(
           'State conflict during game action',
@@ -119,7 +110,6 @@ export async function advanceGameState(
 
     const actionStreets = ['Preflop', 'Flop', 'Turn', 'River', 'Declare'];
     if (actionStreets.includes(state.street)) {
-      log.info('Reached action street, stopping advancement');
       break;
     }
   }

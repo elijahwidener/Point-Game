@@ -14,6 +14,5 @@ async function handler(event) {
     if (!table)
         return { statusCode: 404, body: 'Table not found' };
     await (0, connectionStore_1.registerConnection)(tableID, connectionID, userID);
-    console.log(`Connection ${connectionID} registered for table ${tableID}`);
     return { statusCode: 200, body: 'Connected' };
 }

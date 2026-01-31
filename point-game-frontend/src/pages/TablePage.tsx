@@ -364,7 +364,7 @@ export function TablePage() {
             {/* Right: Controls */}
             <div className="flex items-center gap-3">
               <PlayerControls
-                isSeated={isSeated || isJoining}
+                isSeated={isSeated}
                 isSittingOut={isSittingOut}
                 onLeaveSeat={handleLeaveSeat}
                 onToggleSitOut={handleToggleSitOut}
@@ -399,7 +399,7 @@ export function TablePage() {
           gameState={gameState}
           myUserID={user?.userID || ''}
           onSeatClick={handleSeatClick}
-          isSeated={isSeated}
+          isSeated={isSeated || isJoining}
           seatActions={seatActions}
         />
 

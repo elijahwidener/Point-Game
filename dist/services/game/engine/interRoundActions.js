@@ -62,24 +62,26 @@ async function processJoin(state, action) {
     });
     const { buyIn, username } = action.payload;
     const userID = action.userID;
-    log.info('Join request', { buyIn });
-    if (!buyIn || buyIn <= 0) {
-        throw new errors_1.ConflictError('Invalid buy-in amount');
-    }
     const existingSeat = state.seats.find(s => s.playerID === userID);
     if (existingSeat) {
-        throw new errors_1.ConflictError('Player already seated');
+        log.warn('Player already seated, skipping duplicate join action');
+        return;
+    }
+    if (!buyIn || buyIn <= 0) {
+        log.warn('Invalid buy-in amount, skipping');
+        return;
     }
     const emptySeatIndex = state.seats.findIndex(s => !s.active);
     if (emptySeatIndex === -1 || emptySeatIndex >= state.config.maxPlayers) {
-        log.error('No empty seat available');
-        throw new errors_1.ConflictError('Table Full');
+        log.warn('No empty seat available, skipping join');
+        return;
     }
     try {
         await (0, service_1.applyBalanceDelta)(userID, -buyIn);
     }
     catch (error) {
-        throw new errors_1.ConflictError('Insufficient funds or balance update failed');
+        log.error('Failed to deduct balance for join', { error: error.message });
+        return;
     }
     const seat = state.seats[emptySeatIndex];
     seat.playerID = userID;
@@ -92,7 +94,7 @@ async function processJoin(state, action) {
     seat.active = true;
     seat.declaration = undefined;
     await (0, gameTable_1.updatePlayerCount)(state.tableID, 1);
-    console.log(`Player ${userID} joined table ${state.tableID} at seat ${emptySeatIndex} with ${buyIn} chips`);
+    log.info('Player joined successfully', { seat: emptySeatIndex, stack: buyIn });
 }
 async function processLeave(state, action) {
     const userID = action.userID;
@@ -118,7 +120,6 @@ async function processLeave(state, action) {
     seat.active = false;
     seat.declaration = undefined;
     await (0, gameTable_1.updatePlayerCount)(state.tableID, -1);
-    console.log(`Player ${userID} left table ${state.tableID}, cashed out ${seat.stack} chips`);
 }
 async function processToggleAway(state, action) {
     const userID = action.userID;
@@ -127,7 +128,6 @@ async function processToggleAway(state, action) {
         throw new errors_1.NotFoundError('Player not seated');
     }
     seat.active = !seat.active;
-    console.log(`Player ${userID} is ${seat.active}`);
 }
 // config update for the table is handled already
 async function processConfigUpdate(state, action) {
@@ -153,7 +153,6 @@ async function processConfigUpdate(state, action) {
     state.config = { ...state.config, ...newConfig };
     // Also update the table record (already done in table service, but we update
     // state here)
-    console.log(`Config updated for game ${state.tableID}:`, state.config);
 }
 async function processEnd(state, action) {
     // Cash out all seated players
@@ -161,7 +160,6 @@ async function processEnd(state, action) {
         .map(async (seat) => {
         try {
             await (0, service_1.applyBalanceDelta)(seat.playerID, seat.stack);
-            console.log(`Cashed out ${seat.playerID}: ${seat.stack} chips`);
             // Clear the seat
             seat.stack = 0;
             seat.active = false;

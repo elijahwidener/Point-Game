@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handler = handler;
 const connectionStore_1 = require("../../shared/persistence/connectionStore");
 const gameState_1 = require("../../shared/persistence/gameState");
+const logger_1 = require("../../shared/utils/logger");
 const privacyFilter_1 = require("../../shared/utils/privacyFilter");
 const broadcaster_1 = require("./broadcaster");
 const engine_1 = require("./engine");
@@ -44,14 +45,14 @@ async function handler(event) {
     }
 }
 async function handleResync(connectionID, tableID) {
+    const log = logger_1.logger.child({ tableID, connectionID, fn: 'handleResync' });
     const conn = await (0, connectionStore_1.loadConnectionByConnectionID)(connectionID);
     if (!conn) {
-        console.error(`Resync requested but connection ${connectionID} not found`);
+        log.error('Resync requested but connection not found');
         return;
     }
     const state = await (0, gameState_1.loadGameState)(tableID);
     if (!state) {
-        // No game state - send system message
         await (0, broadcaster_1.sendToConnection)(tableID, connectionID, {
             type: 'system',
             payload: { event: 'no_game', message: 'No active game at this table' }
@@ -60,5 +61,5 @@ async function handleResync(connectionID, tableID) {
     }
     const displayState = (0, privacyFilter_1.applyPrivacyFiltering)(state, conn.playerID);
     await (0, broadcaster_1.sendToConnection)(tableID, connectionID, { type: 'state', payload: displayState });
-    console.log(`Resync sent to ${connectionID} for table ${tableID}`);
+    log.info('Resync sent', { playerID: conn.playerID });
 }

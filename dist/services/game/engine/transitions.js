@@ -28,7 +28,6 @@ async function transitionToStreet(state) {
         log.info('Single player remaining, awarding pot');
         return await awardPotToLastPlayer(newState);
     }
-    log.info('Transitioning street', { currentStreet });
     switch (currentStreet) {
         case 'Preflop':
             return await transitionToFlop(newState);
@@ -67,7 +66,6 @@ async function awardPotToLastPlayer(state) {
         pot.amount = 0;
     }
     winner.stack += totalWon;
-    console.log(`Seat ${winner.seat} (${winner.playerID}) wins ${totalWon} chips (everyone else folded)`);
     // Hand is over
     return await transitionToInterround(state);
 }
@@ -81,7 +79,6 @@ function transitionToPreflop(state) {
     state.pots = [{ amount: 0, eligibleSeats: [] }];
     state.currentBet = 0;
     state.minRaise = state.config.bigBlind;
-    state.button = (0, helpers_1.findNextActiveSeat)(state, state.button);
     // Sit out players with insufficient stack
     state.seats.forEach(seat => {
         if (seat.active && seat.stack <= ante) {
@@ -96,11 +93,6 @@ function transitionToPreflop(state) {
             seat.declaration = undefined;
         }
     });
-    const activePlayers = state.seats.filter(s => s.active && s.stack >= ante);
-    if (activePlayers.length < 3) {
-        state.street = 'Interround';
-        return state;
-    }
     state.seats.forEach(seat => {
         if (seat.active && seat.stack > 0) {
             seat.stack -= ante;
@@ -113,6 +105,12 @@ function transitionToPreflop(state) {
             seat.holeCards = (0, helpers_1.dealCards)(state.deck, 5); // Deal 5 cards
         }
     });
+    state.button = (0, helpers_1.findNextActiveSeat)(state, state.button);
+    const activePlayers = state.seats.filter(s => s.active && s.stack >= ante);
+    if (activePlayers.length < 3) {
+        state.street = 'Interround';
+        return state;
+    }
     (0, helpers_1.postBlinds)(state);
     const bbSeat = (0, helpers_1.findNextActiveSeat)(state, (0, helpers_1.findNextActiveSeat)(state, state.button));
     state.currentPlayerSeat = (0, helpers_1.findNextActiveSeat)(state, bbSeat);
@@ -182,26 +180,19 @@ async function transitionToInterround(state) {
         actions: queue.map(a => ({ type: a.type, userID: a.userID, actionSeq: a.actionSeq })),
     });
     for (const action of queue) {
-        log.info('Processing interround action', {
-            type: action.type,
-            userID: action.userID,
-            actionSeq: action.actionSeq,
-            payload: action.payload,
-        });
         try {
             await (0, interRoundActions_1.processInterRoundAction)(state, action);
-            log.info('Action processed successfully', { type: action.type });
         }
         catch (error) {
             log.error('Failed to process interround action', {
                 type: action.type,
+                userID: action.userID,
+                actionSeq: action.actionSeq,
                 error: error.message,
             });
-            throw error;
         }
         await (0, interRoundActionQueue_1.popInterRoundAction)(state.tableID);
         log.info('Action popped from queue', { type: action.type });
     }
-    log.info('Interround processing complete');
     return state;
 }

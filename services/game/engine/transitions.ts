@@ -26,8 +26,6 @@ export async function transitionToStreet(state: GameState): Promise<GameState> {
     return await awardPotToLastPlayer(newState);
   }
 
-  log.info('Transitioning street', {currentStreet});
-
   switch (currentStreet) {
     case 'Preflop':
       return await transitionToFlop(newState);
@@ -87,7 +85,6 @@ export function transitionToPreflop(state: GameState): GameState {
   state.pots = [{amount: 0, eligibleSeats: []}];
   state.currentBet = 0;
   state.minRaise = state.config.bigBlind;
-  state.button = findNextActiveSeat(state, state.button);
 
 
   // Sit out players with insufficient stack
@@ -105,12 +102,7 @@ export function transitionToPreflop(state: GameState): GameState {
     }
   });
 
-  const activePlayers = state.seats.filter(s => s.active && s.stack >= ante);
 
-  if (activePlayers.length < 3) {
-    state.street = 'Interround';
-    return state;
-  }
 
   state.seats.forEach(seat => {
     if (seat.active && seat.stack > 0) {
@@ -124,6 +116,14 @@ export function transitionToPreflop(state: GameState): GameState {
       seat.holeCards = dealCards(state.deck, 5);  // Deal 5 cards
     }
   });
+  state.button = findNextActiveSeat(state, state.button);
+
+  const activePlayers = state.seats.filter(s => s.active && s.stack >= ante);
+
+  if (activePlayers.length < 3) {
+    state.street = 'Interround';
+    return state;
+  }
 
   postBlinds(state);
   const bbSeat =
@@ -167,8 +167,6 @@ export async function transitionToTurn(state: GameState): Promise<GameState> {
 export async function transitionToRiver(state: GameState): Promise<GameState> {
   state.street = 'River';
   collectRoundContributions(state);
-
-
 
   const cardsToDeal = Math.min(1, state.deck.length);
   if (cardsToDeal > 0) {
@@ -220,15 +218,8 @@ async function transitionToInterround(state: GameState): Promise<GameState> {
   });
 
   for (const action of queue) {
-    log.info('Processing interround action', {
-      type: action.type,
-      userID: action.userID,
-      actionSeq: action.actionSeq,
-      payload: action.payload,
-    });
     try {
       await processInterRoundAction(state, action);
-      log.info('Action processed successfully', {type: action.type});
     } catch (error) {
       log.error('Failed to process interround action', {
         type: action.type,
@@ -241,6 +232,5 @@ async function transitionToInterround(state: GameState): Promise<GameState> {
     log.info('Action popped from queue', {type: action.type});
   }
 
-  log.info('Interround processing complete');
   return state;
 }

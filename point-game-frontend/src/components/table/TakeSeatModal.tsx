@@ -36,8 +36,8 @@ export function TakeSeatModal({
 
   const presets = [
     { label: 'Min', value: minBuyIn },
-    { label: '50BB', value: minBuyIn * 5 },
-    { label: '100BB', value: minBuyIn * 10 },
+    { label: '50BB', value: minBuyIn * 50 },
+    { label: '100BB', value: minBuyIn * 100 },
     { label: 'Max', value: maxBuyIn },
   ].filter((p, i, arr) => {
     // Remove duplicates and out of range
