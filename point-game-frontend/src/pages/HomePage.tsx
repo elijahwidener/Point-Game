@@ -84,7 +84,7 @@ export function HomePage() {
           {/* Header Section */}
           <div className="mb-16 bg-gray-800/50 rounded-xl p-8 border border-gray-700">
             <p className="text-xl text-gray-300 leading-relaxed">
-              In Point Game, your hand strength is determined by your <span className="text-amber-400 font-semibold">point total</span>—calculated exactly like blackjack. Aces can count as either 1 or 11, face cards and tens are worth 10, and all other cards are worth their face value. At showdown, the pot is split in half: one half goes to the player with the highest total, and the other half goes to the player with the lowest total. After the final betting round, players declare which side of the pot they're competing for.
+              In Point Game, your hand strength is determined by your <span className="text-amber-400 font-semibold">point total</span>—calculated exactly like blackjack. Aces can count as either 1 or 11, face cards and tens are worth 10, and all other cards are worth their face value. Throughout each street, players are forced to discard any cards in their hand that match the community cards, meaning hands naturally shrink as the board develops. At showdown, the pot is split in half: one half goes to the player with the highest total, and the other half goes to the player with the lowest total. After the final betting round, players must declare whether they will be competing for the highest hand total, or the lowest hand total.
             </p>
           </div>
 
@@ -178,8 +178,8 @@ export function HomePage() {
               <div>
                 <h3 className="text-3xl font-bold mb-4 text-amber-400">Showdown</h3>
                 <p className="text-gray-300 leading-relaxed">
-                  All declarations are revealed at the same time, and players show their remaining cards. For the high side, aces count as 11; for the low side, aces count as 1. The winners for each pot are determined, and chips are distributed accordingly. If multiple players tie for a side, they split that half of the pot equally.
-                </p>
+                  All declarations are revealed at the same time, and players show their remaining cards. Hand strength is determined by summing the point values of the cards left in a player’s hand. For the high side, aces always count as 11 and for the low side, aces always count as 1. The best High total and the best Low total are each awarded half of the pot, provided the player declared for that side. If multiple players tie for a side, that half of the pot is split evenly among them.
+               </p>
               </div>
               <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
                 <img src="/table-showdown.png" alt="Showdown" className="w-full h-auto" />

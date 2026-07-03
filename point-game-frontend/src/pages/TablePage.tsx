@@ -147,6 +147,7 @@ export function TablePage() {
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tableData, setTableData] = useState<GameTable | null>(null);
+  const [tableName, setTableName] = useState<string>('');
 
   useEffect(() => {
     async function fetchTable() {
@@ -154,12 +155,15 @@ export function TablePage() {
       try {
         const table = await api.getTable(tableID);
         setTableData(table);
+        setTableName(table.name);
       } catch(err){
         console.error('Failed to fetch table:', err);
       }
     }
     fetchTable();
   }, [tableID]);
+
+  
 
   // Derived state
   const mySeat = gameState?.seats.find((s) => s.playerID === user?.userID);
@@ -340,7 +344,7 @@ export function TablePage() {
               
               <div>
                 <h1 className="text-lg font-bold text-white">
-                  {gameState?.tableName}
+                  {tableName}
                 </h1>
                 <div className="flex items-center gap-3">
                   <ConnectionStatus status={connectionStatus} isJoining={isJoining} />

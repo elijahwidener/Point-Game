@@ -24,6 +24,7 @@
     "@aws-sdk/client-dynamodb": "^3.956.0",
     "@aws-sdk/util-dynamodb": "^3.956.0",
     "aws-cdk-lib": "2.232.1",
+    "aws-jwt-verify": "^5.1.1",
     "constructs": "^10.0.0"
   }
 }

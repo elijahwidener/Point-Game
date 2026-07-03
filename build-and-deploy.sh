@@ -25,7 +25,7 @@ echo -e "${GREEN}✓ TypeScript compiled${NC}"
 echo -e "${YELLOW}[3/5] Installing production dependencies...${NC}"
 cd dist
 npm init -y
-npm install --production @aws-sdk/client-dynamodb @aws-sdk/util-dynamodb @aws-sdk/client-apigatewaymanagementapi
+npm install --production @aws-sdk/client-dynamodb @aws-sdk/util-dynamodb @aws-sdk/client-apigatewaymanagementapi aws-jwt-verify
 cd ..
 echo -e "${GREEN}✓ Dependencies installed${NC}"
 

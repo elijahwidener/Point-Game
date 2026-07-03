@@ -21,4 +21,5 @@ export const ROUTES = {
   LOBBY: '/lobby',
   TABLE: '/table/:tableID',
   HAND_HISTORY: '/hand-history',
+  STRATEGY: '/strategy',
 } as const;

@@ -13,6 +13,7 @@ export function Header() {
     { to: ROUTES.HOME, label: 'Home' },
     { to: ROUTES.LOBBY, label: 'Lobby' },
     { to: ROUTES.ABOUT, label: 'About' },
+    { to: ROUTES.STRATEGY, label: 'Strategy' },
     { to: ROUTES.HAND_HISTORY, label: 'Hand History' },
   ];
 

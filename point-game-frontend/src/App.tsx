@@ -9,6 +9,8 @@ import { useAuthStore } from './stores/authStore';
 import { LoginModal } from './components/modals/LoginModal';
 import { SignupModal } from './components/modals/SignupModal';
 import { useUIStore } from "./stores/uiStore";
+import { StrategyPage } from './pages/StrategyPage';
+
 
 
 
@@ -37,6 +39,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="about" element={<AboutPage />} />
+          <Route path="strategy" element={<StrategyPage />} />
           <Route path="hand-history" element={<ComingSoonPage />} />
           
           <Route
