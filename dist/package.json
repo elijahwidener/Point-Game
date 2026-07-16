@@ -11,9 +11,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@aws-sdk/client-apigatewaymanagementapi": "^3.980.0",
-    "@aws-sdk/client-dynamodb": "^3.980.0",
-    "@aws-sdk/util-dynamodb": "^3.980.0",
-    "aws-jwt-verify": "^5.1.1"
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.1089.0",
+    "@aws-sdk/client-dynamodb": "^3.1089.0",
+    "@aws-sdk/client-scheduler": "^3.1089.0",
+    "@aws-sdk/util-dynamodb": "^3.996.7",
+    "aws-jwt-verify": "^5.2.1"
   }
 }

@@ -5,6 +5,7 @@ import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import {WebSocketLambdaIntegration} from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import {Construct} from 'constructs';
 
@@ -231,6 +232,17 @@ export class PointGameInfraStack extends cdk.Stack {
       environment: cognitoEnvVars,
     });
 
+    // Invoked by EventBridge Scheduler when a turn's clock expires. Not wired
+    // to any API - its only caller is the scheduler.
+    const timeoutLambda = new lambda.Function(this, 'TimeoutLambda', {
+      functionName: 'TimeoutLambda',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'services/game/timeout/index.handler',
+      code: lambda.Code.fromAsset('../dist'),
+      timeout: cdk.Duration.seconds(10),
+      environment: cognitoEnvVars,
+    });
+
     const connectLambda = new lambda.Function(this, 'ConnectLambda', {
       functionName: 'ConnectLambda',
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -261,13 +273,18 @@ export class PointGameInfraStack extends cdk.Stack {
     interRoundActionQueue.grantReadWriteData(tableLambda);
     connectionStore.grantReadWriteData(tableLambda);
 
-    gameStateTable.grantReadWriteData(gameLambda);
-    gameTables.grantReadWriteData(gameLambda);
-    actionLogTable.grantReadWriteData(gameLambda);
-    connectionStore.grantReadWriteData(gameLambda);
-    interRoundActionQueue.grantReadWriteData(gameLambda);
-    handSnapshotsTable.grantReadWriteData(gameLambda);
-    usersTable.grantReadWriteData(gameLambda);
+    // TimeoutLambda replays a normal player action, so it touches exactly the
+    // same tables the game Lambda does.
+    for (const fn of [gameLambda, timeoutLambda]) {
+      gameStateTable.grantReadWriteData(fn);
+      gameTables.grantReadWriteData(fn);
+      actionLogTable.grantReadWriteData(fn);
+      connectionStore.grantReadWriteData(fn);
+      interRoundActionQueue.grantReadWriteData(fn);
+      handSnapshotsTable.grantReadWriteData(fn);
+      usersTable.grantReadWriteData(fn);
+      timersTable.grantReadWriteData(fn);
+    }
 
     connectionStore.grantReadWriteData(connectLambda);
     gameTables.grantReadWriteData(connectLambda);
@@ -275,6 +292,50 @@ export class PointGameInfraStack extends cdk.Stack {
     connectionStore.grantReadWriteData(disconnectLambda);
 
     usersTable.grantReadWriteData(connectLambda);
+
+    // ========================================
+    // Turn Timers (EventBridge Scheduler)
+    // ========================================
+
+    // Built by hand rather than read off timeoutLambda.functionArn: the
+    // scheduler role has to name the target, and both Lambdas need the ARN in
+    // their environment - including TimeoutLambda itself. Going through the
+    // construct would make TimeoutLambda depend on a role that depends on
+    // TimeoutLambda, which CloudFormation rejects as a cycle. The function name
+    // is pinned above, so the ARN is deterministic.
+    const timeoutLambdaArn = `arn:${this.partition}:lambda:${this.region}:${
+        this.account}:function:TimeoutLambda`;
+
+    // The role EventBridge Scheduler assumes to invoke TimeoutLambda.
+    const schedulerRole = new iam.Role(this, 'TurnTimerSchedulerRole', {
+      assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com'),
+      description: 'Assumed by EventBridge Scheduler to fire turn timeouts',
+    });
+
+    schedulerRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['lambda:InvokeFunction'],
+      resources: [timeoutLambdaArn],
+    }));
+
+    // Both Lambdas create schedules: the game Lambda when a player action opens
+    // a new turn, TimeoutLambda when a forced action does the same.
+    for (const fn of [gameLambda, timeoutLambda]) {
+      fn.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['scheduler:CreateSchedule'],
+        resources: [`arn:${this.partition}:scheduler:${this.region}:${
+            this.account}:schedule/default/*`],
+      }));
+
+      // Scoped to the one role, so neither Lambda can hand any other role to
+      // the scheduler.
+      fn.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['iam:PassRole'],
+        resources: [schedulerRole.roleArn],
+      }));
+
+      fn.addEnvironment('TIMEOUT_LAMBDA_ARN', timeoutLambdaArn);
+      fn.addEnvironment('SCHEDULER_ROLE_ARN', schedulerRole.roleArn);
+    }
 
     // ========================================
     // REST API Gateway
@@ -388,6 +449,8 @@ export class PointGameInfraStack extends cdk.Stack {
     webSocketApi.grantManageConnections(connectLambda);
     webSocketApi.grantManageConnections(gameLambda);
     webSocketApi.grantManageConnections(tableLambda);
+    // TimeoutLambda broadcasts the forced action like any other.
+    webSocketApi.grantManageConnections(timeoutLambda);
 
     const stage = new apigatewayv2.WebSocketStage(
         this, 'GameStage', {webSocketApi, stageName: 'prod', autoDeploy: true});
@@ -398,6 +461,11 @@ export class PointGameInfraStack extends cdk.Stack {
             this.region}.amazonaws.com/${stage.stageName}`);
 
     tableLambda.addEnvironment(
+        'WEBSOCKET_API_ENDPOINT',
+        `https://${webSocketApi.apiId}.execute-api.${
+            this.region}.amazonaws.com/${stage.stageName}`);
+
+    timeoutLambda.addEnvironment(
         'WEBSOCKET_API_ENDPOINT',
         `https://${webSocketApi.apiId}.execute-api.${
             this.region}.amazonaws.com/${stage.stageName}`);

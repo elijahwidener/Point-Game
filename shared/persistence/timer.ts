@@ -23,9 +23,20 @@ export async function loadTimer(
 }
 
 
+// How long a player gets to act, in ms. The server enforces slightly longer
+// than the clock the client displays (30s) so that network latency and the
+// client's own countdown rounding cannot fold a player who acted in time. The
+// extra second is that grace window.
+export const TURN_MS = 31000;
+
+/**
+ * Writes the timer record for a turn.
+ *
+ * @returns The deadline (epoch ms) the turn expires at
+ */
 export async function writeTimer(
-    tableID: string, timerSeq: number, playerID: string): Promise<void> {
-  const deadline = Date.now();
+    tableID: string, timerSeq: number, playerID: string): Promise<number> {
+  const deadline = Date.now() + TURN_MS;
   const item: Timer = {tableID, timerSeq, playerID, deadline};
 
   await ddb.send(new PutItemCommand({
@@ -35,6 +46,8 @@ export async function writeTimer(
         FIELDS.TIMERS.TABLE_ID}) AND attribute_not_exists(${
         FIELDS.TIMERS.TIMER_SEQ})`
   }));
+
+  return deadline;
 }
 
 export async function deleteTimer(
